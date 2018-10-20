@@ -1,7 +1,22 @@
 from collections import defaultdict
 
-def create_graph():
+def create_window_graph():
 
+    #  0-0-0-0-0-0-0-0-0-0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0-0-0-0-0-0-0-0-0-0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0-0-0-0-0-0-0-0-0-0
+
+    # create window graph with 45 vertex
     graph = defaultdict(list)
 
 
@@ -36,11 +51,41 @@ def create_graph():
     for i in range(38,42):
         graph[i] = [(i - 38) * 3+10, i + 4]
 
-    for i in range(42, 45):
+    for i in range(42, 46):
         graph[i] = [i-4, (i - 42) * 3 + 20]
 
+
+    #for i in graph:
+    #    print(i, graph[i])
+
+    return graph
+
+def create_simple_graph():
+    #
+    #  0
+    #  |
+    #  0
+    #  |
+    #  0-0-0
+    #  |
+    #  0
+    #  |
+    #  0
+
+    # create window graph with 45 vertex
+    graph = defaultdict(list)
+    graph[0] = [1]
+    graph[1] = [0, 2]
+    graph[2] = [1, 3, 5]
+    graph[3] = [2, 4]
+    graph[4] = [3]
+    graph[5] = [2, 6]
+    graph[6] = [5]
 
     for i in graph:
         print(i, graph[i])
 
-create_graph()
+    return graph
+
+# create_window_graph()
+# create_simple_graph()
