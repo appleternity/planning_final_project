@@ -4,6 +4,7 @@ import json
 import pprint
 import time
 
+
 def generate_next_move(g, key, dirty, prs):
     # avoid duplicate
     d = {}
