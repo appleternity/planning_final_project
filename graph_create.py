@@ -202,13 +202,14 @@ def bfs(state):
                 # print('suc = ', suc)
                 queue.append((suc, cur_path + [suc[0]]))
 
+    # print('fuck you no solution')
     return []
 
 # graph = create_simple_graph()
 # graph = create_window_graph()
 import json
 
-filename = "./tree_k2_w1_state.json"
+filename = "./ladder_k3_w1_state.json"
 with open(filename, 'r') as infile:
     graph = json.load(infile)
     graph = {
@@ -216,12 +217,22 @@ with open(filename, 'r') as infile:
        for k, v in graph.items()
    }
 
-pursuers = (0,0)
-dirty = [1] * len(graph)
-dirty[0] = 0
-# dirty[1] = 0
-# dirty[3] = 0
-state = (pursuers, tuple(dirty))
-# get_successors(state)
+# print(graph)
 
-print(bfs(state))
+for i in range(1,10):
+    pursuers = tuple(0 for i in range(i))
+    dirty = [1] * len(graph)
+    dirty[0] = 0
+    # dirty[1] = 0
+    # dirty[3] = 0
+    state = (pursuers, tuple(dirty))
+
+    # get_successors(state)
+    ans = bfs(state)
+
+    if ans:
+        print(i, ans)
+        break
+    else:
+        print('no ans for ', i)
+# print()
