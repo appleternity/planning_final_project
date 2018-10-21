@@ -2,9 +2,10 @@ import copy
 import collections
 import json
 import pprint
-
+import time
 
 def generate_next_move(g, key, dirty, prs):
+    # avoid duplicate
     d = {}
 
     # try to move each pursuer
@@ -12,6 +13,7 @@ def generate_next_move(g, key, dirty, prs):
 
         # find next position of pursuer
         for nxt_pr in g[pr]:
+
             # update next pursers
             nxt_prs = copy.deepcopy(prs)
             nxt_prs[i] = nxt_pr
@@ -140,15 +142,15 @@ def is_cc_similar(cc1, cc2):
         else:
             return False
 
-
     return True
 
 
 def main():
-    # number of nodes
-    n = 4
 
-    # build graph
+    t1 = time.time()
+
+    # T graph
+    n = 4
     g = collections.defaultdict(list)
     g[1].append(0)
     g[0].append(1)
@@ -156,17 +158,74 @@ def main():
     g[2].append(1)
     g[1].append(3)
     g[3].append(1)
-
-    # set dirty area
     dirty = [0] * n
     dirty[1] = dirty[2] = dirty[3] = 1
-
-    # init pursers
     prs = [0, 0]
-
-    # use dirty area as key
     key = ','.join([str(num) for num in dirty + prs])
 
+    # window
+    g = {
+        0: [
+            1,
+            5
+        ],
+        1: [
+            0,
+            2
+        ],
+        2: [
+            1,
+            3,
+            6
+        ],
+        3: [
+            2,
+            4
+        ],
+        4: [
+            3,
+            7
+        ],
+        5: [
+            0,
+            8
+        ],
+        6: [
+            2,
+            10
+        ],
+        7: [
+            4,
+            12
+        ],
+        8: [
+            5,
+            9
+        ],
+        9: [
+            8,
+            10
+        ],
+        10: [
+            6,
+            9,
+            11
+        ],
+        11: [
+            10,
+            12
+        ],
+        12: [
+            7,
+            11
+        ]
+    }
+    dirty = [1] * len(g)
+    dirty[0] = 0
+    prs = [0, 0, 0]
+    key = ','.join([str(num) for num in dirty + prs])
+
+    # parent
     parent = (-1, -1)
 
     # init abstract state connection
@@ -184,9 +243,9 @@ def main():
 
     # while queue is not empty
     while q:
+        print('q ==============')
         print('q', q)
-        print()
-        # print(json.dumps(q, indent=4))
+        print('q ==============')
 
         next_q = []
         for key, dirty, prs, prs_parent in q:
@@ -220,13 +279,22 @@ def main():
                             if state_id == nxt_state_id:
                                 continue
 
+                            # print('Update Abstract Graph Conflict >>>>>>>>>>>>>')
+                            # pprint.pprint(abs_state_g)
+                            # print('Update Abstract Graph Conflict +++++++++++++')
+
                             # remove nxt_state_id to update abs_state_g
                             abs_state_g[state_id] = abs_state_g[state_id] | abs_state_g[nxt_state_id]
                             abs_state_g[nxt_state_id] = set()
                             for st_id, adj_st_ids in abs_state_g.items():
                                 abs_state_g[st_id] = set(filter(lambda num: num != nxt_state_id, adj_st_ids))
 
-                            # update dirtykey_abs_state & abs_state_id_with_dirtyprs
+                            # pprint.pprint(abs_state_g)
+                            # print('Update Abstract Graph Conflict <<<<<<<<<<<<<')
+                            # print()
+                            # print()
+
+                            # update key_absstate & abs_state_id_with_keys
                             for tmp_key, st_id in key_absstate.items():
                                 if st_id == nxt_state_id:
                                     key_absstate[tmp_key] = state_id
@@ -234,8 +302,6 @@ def main():
                                                                | abs_state_id_with_keys[nxt_state_id]
                             abs_state_id_with_keys[nxt_state_id] = set()
 
-
-                            # raise OSError('Conflicts')
                     else:
                         adjs.append(key_absstate[nxt_key])
 
@@ -250,17 +316,28 @@ def main():
                 abs_state_id_with_keys[state_id].add(key)
 
             # update connections in state graph
-            abs_state_g[key_absstate[key]] = set()
+            # print('Update Abstract Graph >>>>>>>>>>>>>')
+            # pprint.pprint(abs_state_g)
+            # print('Update Abstract Graph +++++++++++++')
+            if key_absstate[key] not in abs_state_g:
+                abs_state_g[key_absstate[key]] = set()
             for adj_state in adjs:
                 abs_state_g[key_absstate[key]].add(adj_state)
                 abs_state_g[adj_state].add(key_absstate[key])
+            # pprint.pprint(abs_state_g)
+            # print('Update Abstract Graph <<<<<<<<<<<<<')
+            # print()
+            # print()
 
         q = next_q
 
+    t2 = time.time()
+
     pprint.pprint(abs_state_g)
-    pprint.pprint(abs_state_id_with_keys)
-    print(json.dumps(key_absstate, indent=4))
-    print(len(key_absstate))
+    print(t2 - t1)
+    # pprint.pprint(abs_state_id_with_keys)
+    # print(json.dumps(key_absstate, indent=4))
+    # print(len(key_absstate))
 
 
 def test():
@@ -277,7 +354,7 @@ def test():
     dirty = [0] * n
     dirty[1] = dirty[2] = dirty[3] = 1
     key = ''.join([str(num) for num in dirty])
-    prs = [0, 0]
+    prs = [0, 0, 0]
     res = generate_next_move(g, key, dirty, prs)
     print(res)
     print()
@@ -348,4 +425,3 @@ def test():
 
 if __name__ == '__main__':
     main()
-
