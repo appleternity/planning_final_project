@@ -1,4 +1,6 @@
 from collections import defaultdict
+from collections import deque
+import json
 
 def create_window_graph():
 
@@ -82,10 +84,144 @@ def create_simple_graph():
     graph[5] = [2, 6]
     graph[6] = [5]
 
-    for i in graph:
-        print(i, graph[i])
+    # for i in graph:
+    #     print(i, graph[i])
 
     return graph
 
-# create_window_graph()
-# create_simple_graph()
+
+def is_goal(state):
+
+    # print('-----is_goal-----')
+    # print(state)
+    # state = (p, G)
+
+    return sum(state[1]) == 0
+
+def contaminate(p, ps, dirty):
+
+
+    # print('=== contaminate===')
+    # print(p, ps, dirty)
+    # print('=== contaminate===')
+
+    stack = [p]
+    new_dirty = list(dirty[:])
+    new_dirty[p] = 0
+
+    # print(p, ps, new_dirty)
+    visited = set()
+    while stack:
+        node = stack.pop()
+
+        # print('here', node, [ new_dirty[nei] for nei in graph[node]])
+        if any([ new_dirty[nei] for nei in graph[node]]):
+            # print('nei exist dirty', node)
+            new_dirty[node] = 1
+            for nei in graph[node]:
+                # print('nei = ', nei)
+                if nei in ps or nei in visited:
+                    continue
+                else:
+                    # print('**')
+                    visited.add(nei)
+                    if not dirty[nei]:
+                        stack.append(nei)
+                    new_dirty[nei] = 1
+
+    # print('new_dirty = ', new_dirty)
+
+    return new_dirty
+
+def get_successors(state):
+
+    # pass
+    # state = (pursuers , G)
+
+    pursuers, dirty =  state
+    pursuers = list(pursuers)
+    # print orinal p
+    # print('original = ', pursuers)
+    next_state = set()
+    next_pursurers = set()
+
+    for i in range(len(pursuers)):
+        for p in graph[pursuers[i]]:
+            next_p = tuple(pursuers[:i] + [p] + pursuers[i+1:])
+            if next_p not in next_pursurers:
+                next_pursurers.add(next_p)
+
+
+    for next_ps in next_pursurers:
+        # print('next_ps = ',next_ps)
+        for origin_p, next_p in zip(pursuers, next_ps):
+            if origin_p != next_p:
+                # print('origin_p, next_p = ', pursuers, next_ps, dirty)
+                if origin_p not in next_ps:
+                    new_dirty = list(dirty[:])
+                    new_dirty[next_p] = 0
+                    new_dirty = contaminate(origin_p, next_ps, new_dirty)
+                    # new_dirty[next_p] = 0
+                    next_state.add((tuple(next_ps), tuple(new_dirty)))
+                    # print('*', (tuple(next_ps), tuple(new_dirty)))
+                else:
+                    new_dirty = list(dirty[:])
+                    new_dirty[next_p] = 0
+                    # print(new_dirty)
+                    next_state.add((tuple(next_ps), tuple(new_dirty)))
+                    # print('^', (tuple(next_ps), tuple(new_dirty)))
+    # print('next_state = ')
+    # for i in next_state:
+    #     print(i)
+
+    return next_state
+
+
+def bfs(state):
+
+    # state= pursuers, tuple(dirty)
+    queue = deque([])
+    visited = set()
+    queue.append((tuple(state), [pursuers]))
+    counter = 0
+    while queue:
+        node, cur_path = queue.popleft()
+        # print('node, cur_path = ', node, cur_path)# , visited)
+        if node not in visited:
+            visited.add(node)
+            # print('len(visited) = ', len(visited))
+            # if counter %10000 == 0:
+            #     print(counter, 'node = ',node[0], len(cur_path))
+            counter +=1
+            if is_goal(node):
+                print(node)
+                print('GOAL!!!!!')
+                return cur_path
+            for suc in get_successors(node):
+                # print('----')
+                # print('suc = ', suc)
+                queue.append((suc, cur_path + [suc[0]]))
+
+    return []
+
+# graph = create_simple_graph()
+# graph = create_window_graph()
+import json
+
+filename = "./tree_k2_w1_state.json"
+with open(filename, 'r') as infile:
+    graph = json.load(infile)
+    graph = {
+       int(k):v
+       for k, v in graph.items()
+   }
+
+pursuers = (0,0)
+dirty = [1] * len(graph)
+dirty[0] = 0
+# dirty[1] = 0
+# dirty[3] = 0
+state = (pursuers, tuple(dirty))
+# get_successors(state)
+
+print(bfs(state))
