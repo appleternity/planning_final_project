@@ -188,14 +188,12 @@ def get_successors(state):
         for origin_p, next_p in zip(pursuers, next_ps):
             if origin_p != next_p:
                 # print('origin_p, next_p = ', pursuers, next_ps, dirty)
+                new_dirty = dirty[:next_p] + (0,) + dirty[next_p + 1:]
                 if origin_p not in next_ps:
-                    new_dirty = dirty[:next_p] + (0,) +  dirty[next_p+1:]
-                    new_dirty = contaminate(origin_p, next_ps, new_dirty)
-                    next_state.add((next_ps, new_dirty))
 
-                else:
-                    new_dirty = dirty[:next_p] + (0,) + dirty[next_p + 1:]
-                    next_state.add((next_ps, new_dirty))
+                    new_dirty = contaminate(origin_p, next_ps, new_dirty)
+
+                next_state.add((next_ps, new_dirty))
 
     # print('next_state = ')
     # for i in next_state:
@@ -299,20 +297,20 @@ def dfs(state):
     return []
 # graph = create_simple_graph()
 # graph = create_window_graph()
-# graph = create_Ladder_graph()
-
-filename = "./ladder_k4_w1_state.json"
-with open(filename, 'r') as infile:
-    graph = json.load(infile)
-    graph = {
-       int(k):[int(vv) for vv in v]
-       for k, v in graph.items()
-   }
+graph = create_Ladder_graph()
+#
+# filename = "../ladder_k4_w1_state.json"
+# with open(filename, 'r') as infile:
+#     graph = json.load(infile)
+#     graph = {
+#        int(k):[int(vv) for vv in v]
+#        for k, v in graph.items()
+#    }
 
 print(graph)
 
 t1 = datetime.datetime.now()
-for i in range(5,10):
+for i in range(1,10):
     pursuers = tuple(0 for i in range(i))
     #dirty = [1] * len(graph)
     #dirty[0] = 0
@@ -321,7 +319,7 @@ for i in range(5,10):
     state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = not_bfs(state)
+    ans = dfs(state)
 
     if ans:
         # print(i, ans)
