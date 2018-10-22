@@ -115,10 +115,10 @@ def create_Ladder_graph():
     graph[7] = [6, 8]
     graph[8] = [7, 9, 12, 13]
     graph[9] = [8, 12, 13]
-    graph[10] = [0, 5, 11]
-    graph[11] = [1, 6, 10]
-    graph[12] = [3, 8, 13]
-    graph[13] = [4, 9, 12]
+    graph[10] = [0, 1, 5, 6, 11]
+    graph[11] = [0, 1, 5, 6, 10]
+    graph[12] = [3, 4, 8, 9, 13]
+    graph[13] = [3, 4, 8, 9, 12]
 
     return graph
 
@@ -297,8 +297,8 @@ def dfs(state):
     # print('fuck you no solution')
     return []
 # graph = create_simple_graph()
-# graph = create_window_graph()
-graph = create_Ladder_graph()
+graph = create_window_graph()
+# graph = create_Ladder_graph()
 #
 # filename = "../ladder_k4_w1_state.json"
 # with open(filename, 'r') as infile:
@@ -320,7 +320,7 @@ for i in range(1,10):
     state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = dfs(state)
+    ans = bfs(state)
 
     if ans:
         # print(i, ans)
