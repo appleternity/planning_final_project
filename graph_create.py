@@ -137,32 +137,32 @@ def contaminate(p, ps, dirty):
     # print('=== contaminate===')
 
     stack = [p]
+    # new_dirty = dirty[:p] + (0,) + dirty[p + 1:]
     new_dirty = list(dirty[:])
     new_dirty[p] = 0
-
     # print(p, ps, new_dirty)
     visited = set()
     while stack:
         node = stack.pop()
 
-        # print('here', node, [ new_dirty[nei] for nei in graph[node]])
+        # contaminate node if any neighbor is contaminated
         if any([ new_dirty[nei] for nei in graph[node]]):
             # print('nei exist dirty', node)
+            # new_dirty = new_dirty[:node] + (1,) + new_dirty[node + 1:]
             new_dirty[node] = 1
             for nei in graph[node]:
-                # print('nei = ', nei)
+
                 if nei in ps or nei in visited:
                     continue
                 else:
-                    # print('**')
                     visited.add(nei)
                     if not dirty[nei]:
                         stack.append(nei)
+                    # new_dirty = new_dirty[:nei] + (1,) + new_dirty[nei + 1:]
                     new_dirty[nei] = 1
-
     # print('new_dirty = ', new_dirty)
 
-    return new_dirty
+    return tuple(new_dirty)
 
 def get_successors(state):
 
@@ -170,7 +170,7 @@ def get_successors(state):
     # state = (pursuers , G)
 
     pursuers, dirty =  state
-    pursuers = list(pursuers)
+    # pursuers = pursuers
     # print orinal p
     # print('original = ', pursuers)
     next_state = set()
@@ -178,7 +178,7 @@ def get_successors(state):
 
     for i in range(len(pursuers)):
         for p in graph[pursuers[i]]:
-            next_p = tuple(pursuers[:i] + [p] + pursuers[i+1:])
+            next_p = pursuers[:i] + (p,) + pursuers[i+1:]
             if next_p not in next_pursurers:
                 next_pursurers.add(next_p)
 
@@ -189,17 +189,13 @@ def get_successors(state):
             if origin_p != next_p:
                 # print('origin_p, next_p = ', pursuers, next_ps, dirty)
                 if origin_p not in next_ps:
-                    new_dirty = list(dirty[:])
-                    new_dirty[next_p] = 0
+                    new_dirty = dirty[:next_p] + (0,) +  dirty[next_p+1:]
                     new_dirty = contaminate(origin_p, next_ps, new_dirty)
-                    # new_dirty[next_p] = 0
-                    next_state.add((tuple(next_ps), tuple(new_dirty)))
+                    next_state.add((next_ps, new_dirty))
 
                 else:
-                    new_dirty = list(dirty[:])
-                    new_dirty[next_p] = 0
-                    # print(new_dirty)
-                    next_state.add((tuple(next_ps), tuple(new_dirty)))
+                    new_dirty = dirty[:next_p] + (0,) + dirty[next_p + 1:]
+                    next_state.add((next_ps, new_dirty))
 
     # print('next_state = ')
     # for i in next_state:
@@ -212,19 +208,20 @@ def get_successors(state):
 def not_bfs(state):
 
     # state= pursuers, tuple(dirty)
-    queue = [] # deque([])
+    queue = []
     visited = set()
-    heapq.heappush(queue, (-sum(dirty),(tuple(state), [pursuers])))
+    heapq.heappush(queue, (sum(dirty),(state, [pursuers])))
     # queue.append((tuple(state), [pursuers]))
     counter = 0
     while queue:
         temp = heapq.heappop(queue)
         _, (node, cur_path) =  temp # queue.popleft()
+        # print(queue[:3])
         # print('node, cur_path = ', node, cur_path)# , visited)
         if node not in visited:
             visited.add(node)
             # print('len(visited) = ', len(visited))
-            if counter %10000 == 0:
+            if counter and counter %10000 == 0:
                 print(counter)
 
             counter +=1
@@ -236,7 +233,8 @@ def not_bfs(state):
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
-                heapq.heappush(queue, (-sum(dirty), (suc, cur_path + [suc[0]])))
+                # print(-sum(suc[1]))
+                heapq.heappush(queue, (sum(suc[1]), (suc, cur_path + [suc[0]])))
                 #queue.append((suc, cur_path + [suc[0]]))
 
     # print('fuck you no solution')
@@ -247,7 +245,7 @@ def bfs(state):
     # state= pursuers, tuple(dirty)
     queue = deque([])
     visited = set()
-    queue.append((tuple(state), [pursuers]))
+    queue.append((state, [pursuers]))
     counter = 0
     while queue:
         node, cur_path = queue.popleft()
@@ -255,11 +253,11 @@ def bfs(state):
         if node not in visited:
             visited.add(node)
             # print('len(visited) = ', len(visited))
-            if counter %10000 == 0:
+            if counter and counter % 10000 == 0:
                 print(counter, 'node = ',node[0], len(cur_path))
             counter +=1
             if is_goal(node):
-                print(node)
+                # print(node)
                 print('GOAL!!!!!')
                 print('counter = ', counter)
                 return cur_path
@@ -276,7 +274,7 @@ def dfs(state):
     # state= pursuers, tuple(dirty)
     queue = deque([])
     visited = set()
-    queue.append((tuple(state), [pursuers]))
+    queue.append((state, [pursuers]))
     counter = 0
     while queue:
         node, cur_path = queue.pop()
@@ -288,7 +286,7 @@ def dfs(state):
                 print(counter, 'node = ',node[0], len(cur_path))
             counter +=1
             if is_goal(node):
-                print(node)
+                # print(node)
                 print('GOAL!!!!!')
                 print('counter = ', counter)
                 return cur_path
@@ -301,29 +299,29 @@ def dfs(state):
     return []
 # graph = create_simple_graph()
 # graph = create_window_graph()
-graph = create_Ladder_graph()
+# graph = create_Ladder_graph()
 
-# filename = "./ladder_k4_w1_state.json"
-# with open(filename, 'r') as infile:
-#     graph = json.load(infile)
-#     graph = {
-#        int(k):[int(vv) for vv in v]
-#        for k, v in graph.items()
-#    }
+filename = "./ladder_k4_w1_state.json"
+with open(filename, 'r') as infile:
+    graph = json.load(infile)
+    graph = {
+       int(k):[int(vv) for vv in v]
+       for k, v in graph.items()
+   }
 
 print(graph)
 
 t1 = datetime.datetime.now()
-for i in range(1,10):
+for i in range(5,10):
     pursuers = tuple(0 for i in range(i))
-    dirty = [1] * len(graph)
-    dirty[0] = 0
-    # dirty[1] = 0
-    # dirty[3] = 0
-    state = (pursuers, tuple(dirty))
+    #dirty = [1] * len(graph)
+    #dirty[0] = 0
+    dirty = (0,) + tuple(1 for _ in range(len(graph)-1))
+    # print(dirty)
+    state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = dfs(state)
+    ans = not_bfs(state)
 
     if ans:
         # print(i, ans)
