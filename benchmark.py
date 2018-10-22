@@ -526,6 +526,29 @@ def main():
     key = ','.join([str(num) for num in dirty + prs])
     parent = (-1, -1)
 
+    # 14-graph
+    g = collections.defaultdict(list)
+    g[0] = [1, 10, 11]
+    g[1] = [0, 2, 10, 11]
+    g[2] = [1, 3]
+    g[3] = [2, 4, 12, 13]
+    g[4] = [3, 12, 13]
+    g[5] = [6, 10, 11]
+    g[6] = [5, 7, 10, 11]
+    g[7] = [6, 8]
+    g[8] = [7, 9, 12, 13]
+    g[9] = [8, 12, 13]
+    g[10] = [0, 5, 11]
+    g[11] = [1, 6, 10]
+    g[12] = [3, 8, 13]
+    g[13] = [4, 9, 12]
+    n = len(g)
+    dirty = [1] * n
+    dirty[0] = 0
+    prs = [0, 0, 0]
+    key = ','.join([str(num) for num in dirty + prs])
+    parent = (-1, -1)
+
     # run partition algorithm
     g, state_keys, key_state = partition_algorithm(g, key, dirty, prs, parent)
     import pprint
