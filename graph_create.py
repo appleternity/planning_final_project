@@ -297,8 +297,8 @@ def dfs(state):
     # print('fuck you no solution')
     return []
 # graph = create_simple_graph()
-graph = create_window_graph()
-# graph = create_Ladder_graph()
+# graph = create_window_graph()
+graph = create_Ladder_graph()
 #
 # filename = "../ladder_k4_w1_state.json"
 # with open(filename, 'r') as infile:
@@ -320,7 +320,7 @@ for i in range(1,10):
     state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = bfs(state)
+    ans = dfs(state)
 
     if ans:
         # print(i, ans)
