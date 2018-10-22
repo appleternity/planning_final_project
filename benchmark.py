@@ -1,6 +1,5 @@
 import copy
 import collections
-import json
 import pprint
 import time
 
@@ -14,7 +13,6 @@ def generate_next_move(g, key, dirty, prs):
 
         # find next position of pursuer
         for nxt_pr in g[pr]:
-
             # update next pursers
             nxt_prs = copy.deepcopy(prs)
             nxt_prs[i] = nxt_pr
@@ -74,11 +72,11 @@ def get_cc(g, dirty):
         if node not in vst:
             cur_nodes = []
             if dirty[node]:
-                cc_dfs(g, dirty, dirty[node], cur_nodes, node, vst)
+                get_cc_dfs(g, dirty, dirty[node], cur_nodes, node, vst)
                 cur_nodes.sort()
                 bad.append(cur_nodes)
             else:
-                cc_dfs(g, dirty, dirty[node], cur_nodes, node, vst)
+                get_cc_dfs(g, dirty, dirty[node], cur_nodes, node, vst)
                 cur_nodes.sort()
                 ok.append(cur_nodes)
     ok.sort()
@@ -86,13 +84,13 @@ def get_cc(g, dirty):
     return [ok, bad]
 
 
-def cc_dfs(g, dirty, target, cur_nodes, node, vst):
+def get_cc_dfs(g, dirty, target, cur_nodes, node, vst):
     vst.add(node)
     cur_nodes.append(node)
 
     for nxt_node in g[node]:
         if nxt_node not in vst and dirty[nxt_node] == target:
-            cc_dfs(g, dirty, target, cur_nodes, nxt_node, vst)
+            get_cc_dfs(g, dirty, target, cur_nodes, nxt_node, vst)
 
 
 def is_cc_similar(cc1, cc2):
@@ -146,90 +144,8 @@ def is_cc_similar(cc1, cc2):
     return True
 
 
-def main():
-
-    t1 = time.time()
-
-    # T graph
-    n = 4
-    g = collections.defaultdict(list)
-    g[1].append(0)
-    g[0].append(1)
-    g[1].append(2)
-    g[2].append(1)
-    g[1].append(3)
-    g[3].append(1)
-    dirty = [0] * n
-    dirty[1] = dirty[2] = dirty[3] = 1
-    prs = [0, 0]
-    key = ','.join([str(num) for num in dirty + prs])
-
-    # window
-    g = {
-        0: [
-            1,
-            5
-        ],
-        1: [
-            0,
-            2
-        ],
-        2: [
-            1,
-            3,
-            6
-        ],
-        3: [
-            2,
-            4
-        ],
-        4: [
-            3,
-            7
-        ],
-        5: [
-            0,
-            8
-        ],
-        6: [
-            2,
-            10
-        ],
-        7: [
-            4,
-            12
-        ],
-        8: [
-            5,
-            9
-        ],
-        9: [
-            8,
-            10
-        ],
-        10: [
-            6,
-            9,
-            11
-        ],
-        11: [
-            10,
-            12
-        ],
-        12: [
-            7,
-            11
-        ]
-    }
-    dirty = [1] * len(g)
-    dirty[0] = 0
-    prs = [0, 0, 0]
-    key = ','.join([str(num) for num in dirty + prs])
-
-    # parent
-    parent = (-1, -1)
-
-    # init abstract state connection
+def partition_algorithm(g, key, dirty, prs, parent):
+    # init abstract state
     abs_state_g = collections.defaultdict(set)
     abs_state_id_with_keys = collections.defaultdict(set)
     key_absstate = {}
@@ -244,9 +160,7 @@ def main():
 
     # while queue is not empty
     while q:
-        print('q ==============')
-        print('q', q)
-        print('q ==============')
+        print('vst real state', len(vst))
 
         next_q = []
         for key, dirty, prs, prs_parent in q:
@@ -280,20 +194,11 @@ def main():
                             if state_id == nxt_state_id:
                                 continue
 
-                            # print('Update Abstract Graph Conflict >>>>>>>>>>>>>')
-                            # pprint.pprint(abs_state_g)
-                            # print('Update Abstract Graph Conflict +++++++++++++')
-
                             # remove nxt_state_id to update abs_state_g
                             abs_state_g[state_id] = abs_state_g[state_id] | abs_state_g[nxt_state_id]
                             abs_state_g[nxt_state_id] = set()
                             for st_id, adj_st_ids in abs_state_g.items():
                                 abs_state_g[st_id] = set(filter(lambda num: num != nxt_state_id, adj_st_ids))
-
-                            # pprint.pprint(abs_state_g)
-                            # print('Update Abstract Graph Conflict <<<<<<<<<<<<<')
-                            # print()
-                            # print()
 
                             # update key_absstate & abs_state_id_with_keys
                             for tmp_key, st_id in key_absstate.items():
@@ -317,28 +222,320 @@ def main():
                 abs_state_id_with_keys[state_id].add(key)
 
             # update connections in state graph
-            # print('Update Abstract Graph >>>>>>>>>>>>>')
-            # pprint.pprint(abs_state_g)
-            # print('Update Abstract Graph +++++++++++++')
             if key_absstate[key] not in abs_state_g:
                 abs_state_g[key_absstate[key]] = set()
             for adj_state in adjs:
                 abs_state_g[key_absstate[key]].add(adj_state)
                 abs_state_g[adj_state].add(key_absstate[key])
-            # pprint.pprint(abs_state_g)
-            # print('Update Abstract Graph <<<<<<<<<<<<<')
-            # print()
-            # print()
 
+        # update queue
         q = next_q
 
-    t2 = time.time()
+    # return
+    return abs_state_g, abs_state_id_with_keys, key_absstate
 
-    pprint.pprint(abs_state_g)
-    print(t2 - t1)
-    # pprint.pprint(abs_state_id_with_keys)
-    # print(json.dumps(key_absstate, indent=4))
-    # print(len(key_absstate))
+
+def bfs_abstract_state(g, state_keys, key_state, dirty_n, prs_n):
+    # find our start state
+    start_key = [1] * dirty_n + [0] * prs_n
+    start_key[0] = 0
+    start_key = ','.join([str(num) for num in start_key])
+
+    # find start state
+    start_state = -1
+    for state, keys in state_keys.items():
+        if start_key in keys:
+            start_state = state
+            break
+
+    # find end state
+    end_state = -1
+    end_key = [0] * dirty_n
+    end_key = ','.join([str(num) for num in end_key])
+    for state, keys in state_keys.items():
+        for k in keys:
+            if k.startswith(end_key):
+                end_state = state
+                break
+
+    print('Start State:', start_state, 'End State:', end_state)
+
+    # run bfs
+    vst = set()
+    q = [start_state]
+
+    while q:
+        next_q = []
+        for state in q:
+            # add to vst
+            vst.add(state)
+
+            # if we reach target
+            if state == end_state:
+                return True
+
+            # find adj state
+            for nxt_state in g[state]:
+                if nxt_state not in vst:
+                    next_q.append(nxt_state)
+        q = next_q
+    return False
+
+
+def main():
+    t1 = time.time()
+
+    # T graph
+    n = 4
+    g = collections.defaultdict(list)
+    g[1].append(0)
+    g[0].append(1)
+    g[1].append(2)
+    g[2].append(1)
+    g[1].append(3)
+    g[3].append(1)
+    dirty = [0] * n
+    dirty[1] = dirty[2] = dirty[3] = 1
+    prs = [0, 0]
+    key = ','.join([str(num) for num in dirty + prs])
+    parent = (-1, -1)
+
+    # 30-graph
+    g = {
+        0: [
+            1,
+            6
+        ],
+        1: [
+            0,
+            2
+        ],
+        2: [
+            1,
+            3,
+            7,
+            22,
+            22
+        ],
+        3: [
+            2,
+            4,
+            20
+        ],
+        4: [
+            3,
+            5,
+            16,
+            20,
+            20
+        ],
+        5: [
+            4,
+            17,
+            25,
+            25,
+            29,
+            29
+        ],
+        6: [
+            0,
+            8
+        ],
+        7: [
+            2,
+            9,
+            22,
+            22,
+            23,
+            23
+        ],
+        8: [
+            6,
+            10
+        ],
+        9: [
+            7,
+            23,
+            23,
+            24,
+            24
+        ],
+        10: [
+            8,
+            11
+        ],
+        11: [
+            10,
+            12
+        ],
+        12: [
+            11,
+            13,
+            24,
+            24
+        ],
+        13: [
+            12,
+            14,
+            21
+        ],
+        14: [
+            13,
+            15,
+            18,
+            21,
+            21
+        ],
+        15: [
+            14,
+            19,
+            26,
+            26,
+            28,
+            28
+        ],
+        16: [
+            4,
+            18,
+            18,
+            20,
+            20,
+            20,
+            21,
+            21
+        ],
+        17: [
+            5,
+            25,
+            25,
+            25,
+            27,
+            27,
+            29
+        ],
+        18: [
+            14,
+            16,
+            16,
+            20,
+            20,
+            21,
+            21,
+            21
+        ],
+        19: [
+            15,
+            26,
+            26,
+            26,
+            27,
+            27,
+            28
+        ],
+        20: [
+            3,
+            4,
+            4,
+            16,
+            16,
+            16,
+            18,
+            18,
+            21,
+            21
+        ],
+        21: [
+            13,
+            14,
+            14,
+            16,
+            16,
+            18,
+            18,
+            18,
+            20,
+            20
+        ],
+        22: [
+            2,
+            2,
+            7,
+            7,
+            23
+        ],
+        23: [
+            7,
+            7,
+            9,
+            9,
+            22,
+            24
+        ],
+        24: [
+            9,
+            9,
+            12,
+            12,
+            23
+        ],
+        25: [
+            5,
+            5,
+            17,
+            17,
+            17,
+            27,
+            29,
+            29
+        ],
+        26: [
+            15,
+            15,
+            19,
+            19,
+            19,
+            28,
+            28
+        ],
+        27: [
+            17,
+            17,
+            19,
+            19,
+            25
+        ],
+        28: [
+            15,
+            15,
+            19,
+            26,
+            26
+        ],
+        29: [
+            5,
+            5,
+            17,
+            25,
+            25
+        ]
+    }
+    n = len(g)
+    dirty = [1] * n
+    dirty[0] = 1
+    prs = [0, 0, 0, 0, 0]
+    key = ','.join([str(num) for num in dirty + prs])
+    parent = (-1, -1)
+
+    # run partition algorithm
+    g, state_keys, key_state = partition_algorithm(g, key, dirty, prs, parent)
+    import pprint
+    pprint.pprint(g)
+    pprint.pprint(state_keys)
+    pprint.pprint(key_state)
+
+    # run BFS on abstract state
+    reached = bfs_abstract_state(g, state_keys, key_state, n, len(prs))
+    print('Can we reach the goal', reached)
 
 
 def test():
