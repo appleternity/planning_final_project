@@ -4,6 +4,7 @@ import heapq
 import datetime
 import json
 
+
 def create_window_graph():
 
     #  0-0-0-0-0-0-0-0-0-0
@@ -31,19 +32,19 @@ def create_window_graph():
     graph[6].append(32)
     graph[9] = [8, 33]
 
-    graph[10] = [13,34,38]
+    graph[10] = [11,34,38] # fixed 13-> 11
     for i in range(11, 19):
         graph[i] = [i - 1, i + 1]
     graph[13] += [35,39]
     graph[16] += [36,40]
-    graph[19] = [16,37,41]
+    graph[19] = [18,37,41] # fixed 16-> 18
 
-    graph[20] = [23,42]
+    graph[20] = [21,42]
     for i in range(21, 29):
         graph[i] = [i - 1, i + 1]
     graph[23] += [43]
     graph[26] += [44]
-    graph[29]  = [26, 45]
+    graph[29]  = [28, 45] # fixed 26-> 28
 
 
     for i in range(30,34):
