@@ -209,7 +209,7 @@ def not_bfs(state):
     # state= pursuers, tuple(dirty)
     queue = []
     visited = set()
-    heapq.heappush(queue, (sum(dirty),(state, [pursuers])))
+    heapq.heappush(queue, (sum(dirty),(state, [state])))
     # queue.append((tuple(state), [pursuers]))
     counter = 0
     while queue:
@@ -273,7 +273,7 @@ def dfs(state):
     # state= pursuers, tuple(dirty)
     queue = deque([])
     visited = set()
-    queue.append((state, [pursuers]))
+    queue.append((state, [state]))
     counter = 0
     while queue:
         node, cur_path = queue.pop()
@@ -292,7 +292,7 @@ def dfs(state):
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
-                queue.append((suc, cur_path + suc))
+                queue.append((suc, cur_path + [suc]))
 
     # print('fuck you no solution')
     return []
@@ -320,7 +320,7 @@ for i in range(1,10):
     state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = bfs(state)
+    ans = not_bfs(state)
 
     if ans:
         # print(i, ans)
