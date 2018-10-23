@@ -8,10 +8,9 @@ from pprint import pprint
 scale = 2
 height = 230*scale
 width = 370*scale
-unit = 40*scale
-offset = 60*scale
-#unit = 25*scale
-#offset = 33*scale
+unit = 47*scale
+offset = 53*scale
+
 
 # draw - (x, y)
 # np - (height, width)
@@ -30,7 +29,7 @@ def create_tree(k, w, fix_r=20, fix_c=20):
     # cv2.waitKey(0)
 
     cv2.imwrite("fig/tree_k{}_w{}.png".format(k, w), img)
-    build_map(img, "tree_k{}_w{}".format(k, w), fix_r, fix_c)
+    build_map(img, "_tree_k{}_w{}".format(k, w), fix_r, fix_c)
 
 def create_ladder(k, w, fix_r, fix_c):
     img = np.zeros((height, width), np.uint8)
@@ -47,7 +46,7 @@ def create_ladder(k, w, fix_r, fix_c):
     # cv2.waitKey(0)
 
     cv2.imwrite("fig/ladder_k{}_w{}.png".format(k, w), img)
-    build_map(img, "ladder_k{}_w{}".format(k, w), fix_r, fix_c)
+    build_map(img, "_ladder_k{}_w{}".format(k, w), fix_r, fix_c)
 
 def create_window(k, w):
     img = np.zeros((height, width), np.uint8)
@@ -105,8 +104,10 @@ def build_map(img, filename, fix_r=20, fix_c=20):
         # print(result.shape)
         data = data[temp>unit]
         # print("data shape = ", data.shape)
+    # print(rest_center)
+    if rest_center:
+        rest_center = np.vstack(rest_center)
 
-    rest_center = np.vstack(rest_center)
     while data.shape[0] != 0:
         dist = cdist(data, rest_center)
         # print(np.min(dist, axis=0).shape)
@@ -163,7 +164,7 @@ def build_map(img, filename, fix_r=20, fix_c=20):
     number = 0
     for center_id, ner in center_ner.items():
         for pcenter_id in ner:
-            print("(c, p) = ({}, {})".format(center_id, pcenter_id))
+            # print("(c, p) = ({}, {})".format(center_id, pcenter_id))
             p_ner = center_ner[pcenter_id]
             img1 = np.zeros((height, width), np.uint8)
             img2 = np.zeros((height, width), np.uint8)
@@ -173,6 +174,7 @@ def build_map(img, filename, fix_r=20, fix_c=20):
             black_img[black_img!=20] = 0
             black_img[black_img==20] = 255
             black_img[img==0] = 0
+
             # if center_id == 7 and pcenter_id == 20:
             #     cv2.imshow("black_img", black_img)
             #     cv2.imshow("img", img)
@@ -187,20 +189,106 @@ def build_map(img, filename, fix_r=20, fix_c=20):
             shared_centers = list(set(ner) & set(p_ner))
             if not shared_centers and np.any(black_img!=0):
                 connection[center_id].append(pcenter_id)
-
+            # print(shared_centers)
             for shared_index in shared_centers:
                 s_x, s_y = mapping_dictionary_2[shared_index]
-                temp_img = np.copy(black_img)
-                cv2.circle(temp_img, (s_x, s_y), unit, 0, -1)
-                output = cv2.connectedComponentsWithStats(temp_img, 8, cv2.CV_32S)
-                count[output[0]] = count.get(output[0], 0)+1
+                temp_img1 = np.copy(black_img)
+                temp_img2 = np.copy(black_img)
+                cv2.circle(temp_img1, (s_x, s_y), unit, 0, -1)
+                cv2.circle(temp_img1, mapping_dictionary_2[center_id], unit, 10, -1)
+                cv2.circle(temp_img1, (s_x, s_y), unit, 0, -1)
 
+                cv2.circle(temp_img2, (s_x, s_y), unit, 0, -1)
+                cv2.circle(temp_img2, mapping_dictionary_2[pcenter_id], unit, 10, -1)
+                cv2.circle(temp_img2, (s_x, s_y), unit, 0, -1)
+                temp_img = temp_img1 + temp_img2
+
+
+                temp_img[img == 0] = 0
+                temp_img[temp_img == 10] = 0
+                temp_img[temp_img == 20] = 255
+                temp_img[temp_img>=255] = 255
+
+                temp_img1[img == 0] = 0
+                temp_img2[img == 0] = 0
+                temp_img1[temp_img1 != 0] = 255
+                temp_img2[temp_img2 != 0] = 255
+                temp_img1[temp_img1 != 255] = 0
+                temp_img2[temp_img2 != 255] = 0
+
+                #temp_img[temp_img == 20] = 0
+                temp_img[temp_img != 255] =0
+                output = cv2.connectedComponentsWithStats(temp_img, 8, cv2.CV_32S)
+                output1 = cv2.connectedComponentsWithStats(temp_img1, 8, cv2.CV_32S)
+                output2 = cv2.connectedComponentsWithStats(temp_img2, 8, cv2.CV_32S)
+                # print(output)
+                number = output[0]
+                if number >=3:
+                    for component in output[2]:
+                        c_x, c_y = mapping_dictionary_2[center_id]
+                        p_x, p_y = mapping_dictionary_2[pcenter_id]
+                        if (not (component[0] <= c_x <= component[0] + component[2]) or not (
+                                component[1] <= c_y <= component[1] + component[3])) and (
+                                not (component[0] <= p_x <= component[0] + component[2]) or not (
+                                component[1] <= p_y <= component[1] + component[3])):
+                            number-=1
+                number1 = output1[0]
+                number2 = output2[0]
+
+                if number1 >=3:
+                    for component in output1[2]:
+                        # print(len(component))
+                        c_x, c_y = mapping_dictionary_2[center_id]
+                        p_x, p_y = mapping_dictionary_2[pcenter_id]
+                        # print(mapping_dictionary_2[center_id],mapping_dictionary_2[pcenter_id])
+                        # print(component[0], component[0] + component[2], component[1], component[1] + component[3])
+
+                        if (( c_x not in range(component[0], component[0] + component[2])) or (
+                                c_y not in range(component[1], component[1] + component[3]))) and (( p_x not in range(component[0], component[0] + component[2])) or (
+                                p_y not in range(component[1], component[1] + component[3]))):
+                            number1 -= 1
+                if number2 >=3:
+                    for component in output2[2]:
+                        c_x, c_y = mapping_dictionary_2[center_id]
+                        p_x, p_y = mapping_dictionary_2[pcenter_id]
+                        if (not (component[0] <= c_x <= component[0] + component[2]) or not (
+                                component[1] <= c_y <= component[1] + component[3])) and  (not (component[0] <= p_x <= component[0] + component[2]) or not (
+                                component[1] <= p_y <= component[1] + component[3])):
+                            number2-=1
+                # print('number = ',number)
+                # count[number] = count.get(output[0], 0)+1
+                # if center_id== 0 and pcenter_id ==9:
+                #     cv2.imshow("temp_img", temp_img)
+                #     cv2.waitKey(0)
+                #     cv2.imshow("temp_img", temp_img1)
+                #     cv2.waitKey(0)
+                #     cv2.imshow("temp_img", temp_img2)
+                #     cv2.waitKey(0)
+
+                #
+                # cv2.imshow("temp_img", temp_img2)
+                # # cv2.imshow("img", img)
+                # cv2.waitKey(0)
                 # 1 cc
-                if output[0] == 2:
-                    connection[center_id].append(pcenter_id)
+                if number == 1:
+                    while pcenter_id in connection[center_id]:
+                        connection[center_id].pop(connection[center_id].index(pcenter_id))
+                    break
+                if number == 2:
+                    # print(number1, number2)
+                    # print('ininnin')
+                    if number1 == 2 and number2 == 2:
+                        if pcenter_id not in connection[center_id]:
+                            connection[center_id].append(pcenter_id)
+                    else:
+                        while pcenter_id in connection[center_id]:
+                            connection[center_id].pop(connection[center_id].index(pcenter_id))
+                        break
                 # 2 cc
-                elif output[0] == 3:
-                    continue
+                elif number == 3:
+                    if pcenter_id in  connection[center_id]:
+                        connection[center_id].pop(connection[center_id].index(pcenter_id))
+                    break
                 # no connection
                 else:
                     continue
@@ -240,8 +328,27 @@ def build_map(img, filename, fix_r=20, fix_c=20):
         if not connection[center_id]:
             print("GGGGG")
         # print()
-    pprint(count)
+    # pprint(count)
 
+    def remove():
+        a = []# [(1, 8), (4, 9)]
+        for i in range(len(a)):
+            while a[i][0] in connection[a[i][1]]:
+                connection[a[i][1]].pop(connection[a[i][1]].index(a[i][0]))
+            while a[i][1] in connection[a[i][0]]:
+                connection[a[i][0]].pop(connection[a[i][0]].index(a[i][1]))
+
+    def add():
+        a =[]#  [(9, 15), (15, 21), (21, 27), ( 2, 9)]
+        for i in range(len(a)):
+            connection[a[i][0]].append(a[i][1])
+            connection[a[i][1]].append(a[i][0])
+
+    # print(connection[5], connection[11])
+    remove()
+    add()
+
+    # print(connection[5], connection[11])
     with open("mapping/{}_mapping_dictionary.json".format(filename), 'w', encoding='utf-8') as outfile:
         json.dump(reverse_mapping_dictionary, outfile, indent=4)
 
@@ -282,14 +389,12 @@ def test():
     cv2.imwrite("sample.png", img)
 
 def main():
-    # create_tree(2, 1, 50, 50)
-    # create_ladder(2, 1, 50, 50)
-    # create_ladder(3, 1, 50, 50)
+
     # create_ladder(4, 1, 50, 50)
     # create_ladder(4, 2)
-    # create_tree(4, 1)
+    create_tree(1, 1, 65, 48)
     # create_ladder(4, 1)
-    create_window(3, 1)
+    # create_window(3, 1)
 
 if __name__ == "__main__":
     main()
