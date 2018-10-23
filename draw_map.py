@@ -3,12 +3,13 @@ import cv2
 from scipy.spatial.distance import cdist
 import json
 import os, os.path
+from pprint import pprint
 
 scale = 2
 height = 230*scale
 width = 370*scale
-unit = 55*scale
-offset = 80*scale
+unit = 40*scale
+offset = 60*scale
 #unit = 25*scale
 #offset = 33*scale
 
@@ -63,8 +64,8 @@ def create_window(k, w):
     # cv2.imshow("window_k{}_w{}.png".format(k, w), img)
     # cv2.waitKey(0)
 
-    cv2.imwrite("fig/window_k{}_w{}.png".format(k, w), img)    
-    build_map(img, "window_k{}_w{}".format(k, w))
+    cv2.imwrite("fig/window_k{}_w{}.png".format(k, w), img)
+    build_map(img, "window_k{}_w{}".format(k, w), 50, 50)
 
 def build_map(img, filename, fix_r=20, fix_c=20):
     centers = []
@@ -141,6 +142,7 @@ def build_map(img, filename, fix_r=20, fix_c=20):
     }
     # print(mapping_dictionary)
     # print(reverse_mapping_dictionary)
+    center_ner = {_id:[] for cor, _id in mapping_dictionary.items()}
     for center in useful_center:
         temp = useful_center - center
         temp = np.power(temp[:, 0], 2) + np.power(temp[:, 1], 2)
@@ -155,18 +157,90 @@ def build_map(img, filename, fix_r=20, fix_c=20):
 
         # temp_img = np.copy(img)
         c_index = mapping_dictionary[(center[0], center[1])]
-        for p_center in possible_centers:
-            temp_img = np.copy(img)
-            # print(p_center, end=" ")
-            cv2.line(temp_img, (center[1], center[0]), (p_center[1], p_center[0]), 111, 1)
-            temp_img[img==255] = 255
-            if not np.any(temp_img==111):
-                p_index = mapping_dictionary[(p_center[0], p_center[1])]
-                connection[c_index].append(p_index)
-                # print("o, ", end=" ")
-        if not connection[c_index]:
+        center_ner[c_index].extend(mapping_dictionary[(p_center[0], p_center[1])] for p_center in possible_centers)
+
+    count = {}
+    number = 0
+    for center_id, ner in center_ner.items():
+        for pcenter_id in ner:
+            print("(c, p) = ({}, {})".format(center_id, pcenter_id))
+            p_ner = center_ner[pcenter_id]
+            img1 = np.zeros((height, width), np.uint8)
+            img2 = np.zeros((height, width), np.uint8)
+            cv2.circle(img1, mapping_dictionary_2[center_id], unit, 10, -1)
+            cv2.circle(img2, mapping_dictionary_2[pcenter_id], unit, 10, -1)
+            black_img = img1+img2
+            black_img[black_img!=20] = 0
+            black_img[black_img==20] = 255
+            black_img[img==0] = 0
+            # if center_id == 7 and pcenter_id == 20:
+            #     cv2.imshow("black_img", black_img)
+            #     cv2.imshow("img", img)
+            #     cv2.waitKey(0)
+
+            # black_set = list(set(center_ner.keys())-(set(ner)&set(p_ner) | set([center_id, pcenter_id])))
+            # black_img = np.copy(img)
+            # for black_index in black_set:
+            #     x, y = mapping_dictionary_2[black_index]
+            #     cv2.circle(black_img, (x, y), unit, 0, -1)
+
+            shared_centers = list(set(ner) & set(p_ner))
+            if not shared_centers and np.any(black_img!=0):
+                connection[center_id].append(pcenter_id)
+
+            for shared_index in shared_centers:
+                s_x, s_y = mapping_dictionary_2[shared_index]
+                temp_img = np.copy(black_img)
+                cv2.circle(temp_img, (s_x, s_y), unit, 0, -1)
+                output = cv2.connectedComponentsWithStats(temp_img, 8, cv2.CV_32S)
+                count[output[0]] = count.get(output[0], 0)+1
+
+                # 1 cc
+                if output[0] == 2:
+                    connection[center_id].append(pcenter_id)
+                # 2 cc
+                elif output[0] == 3:
+                    continue
+                # no connection
+                else:
+                    continue
+                    print("connected GGG", output[0])
+                    # cv2.imshow("test", temp_img)
+                    # cv2.imwrite("test_{}.png".format(number), temp_img)
+                    # number += 1
+                    # cv2.waitKey(0)
+
+                # if center_id == 0 and pcenter_id == 6:
+                    # cv2.imshow("test", temp_img)
+                    # cv2.waitKey(0)
+        # quit()
+        # for p_center in possible_centers:
+        #     p_index = mapping_dictionary[(p_center[0], p_center[1])]
+        #     print(p_center)
+        #     print(center)
+        #     temp_img = np.copy(img)
+        #     # print(p_center, end=" ")
+        #     for (x, y), center_id in mapping_dictionary.items():
+        #         if center_id == c_index or center_id == p_index:
+        #             continue
+        #         cv2.circle(temp_img, (y, x), unit, 0, -1)
+
+        #     cv2.imshow("test", temp_img)
+        #     cv2.waitKey(0)
+
+            # cv2.line(temp_img, (center[1], center[0]), (p_center[1], p_center[0]), 111, 1)
+            # temp_img[img==255] = 255
+            # if not np.any(temp_img==111):
+            #     p_index = mapping_dictionary[(p_center[0], p_center[1])]
+            #     connection[c_index].append(p_index)
+            #     # print("o, ", end=" ")
+
+        
+
+        if not connection[center_id]:
             print("GGGGG")
         # print()
+    pprint(count)
 
     with open("mapping/{}_mapping_dictionary.json".format(filename), 'w', encoding='utf-8') as outfile:
         json.dump(reverse_mapping_dictionary, outfile, indent=4)
@@ -209,11 +283,13 @@ def test():
 
 def main():
     # create_tree(2, 1, 50, 50)
-    create_ladder(2, 1, 50, 50)
+    # create_ladder(2, 1, 50, 50)
+    # create_ladder(3, 1, 50, 50)
+    # create_ladder(4, 1, 50, 50)
     # create_ladder(4, 2)
     # create_tree(4, 1)
     # create_ladder(4, 1)
-    # create_window(4, 1)
+    create_window(3, 1)
 
 if __name__ == "__main__":
     main()
