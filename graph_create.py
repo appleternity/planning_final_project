@@ -233,7 +233,7 @@ def not_bfs(state):
                 # print('----')
                 # print('suc = ', suc)
                 # print(-sum(suc[1]))
-                heapq.heappush(queue, (sum(suc[1]), (suc, cur_path + [suc[0]])))
+                heapq.heappush(queue, (sum(suc[1]), (suc, cur_path + [suc])))
                 #queue.append((suc, cur_path + [suc[0]]))
 
     # print('fuck you no solution')
@@ -244,7 +244,7 @@ def bfs(state):
     # state= pursuers, tuple(dirty)
     queue = deque([])
     visited = set()
-    queue.append((state, [pursuers]))
+    queue.append((state, [state]))
     counter = 0
     while queue:
         node, cur_path = queue.popleft()
@@ -263,7 +263,7 @@ def bfs(state):
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
-                queue.append((suc, cur_path + [suc[0]]))
+                queue.append((suc, cur_path + [suc]))
 
     # print('fuck you no solution')
     return []
@@ -277,7 +277,7 @@ def dfs(state):
     counter = 0
     while queue:
         node, cur_path = queue.pop()
-        # print('node, cur_path = ', node, cur_path)# , visited)
+        print('node, cur_path = ', node, cur_path)# , visited)
         if node not in visited:
             visited.add(node)
             # print('len(visited) = ', len(visited))
@@ -292,13 +292,13 @@ def dfs(state):
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
-                queue.append((suc, cur_path + [suc[0]]))
+                queue.append((suc, cur_path + suc))
 
     # print('fuck you no solution')
     return []
-# graph = create_simple_graph()
+graph = create_simple_graph()
 # graph = create_window_graph()
-graph = create_Ladder_graph()
+# graph = create_Ladder_graph()
 #
 # filename = "../ladder_k4_w1_state.json"
 # with open(filename, 'r') as infile:
@@ -320,12 +320,12 @@ for i in range(1,10):
     state = (pursuers, dirty)
 
     # options of dfs, bfs, not_bfs
-    ans = dfs(state)
+    ans = bfs(state)
 
     if ans:
         # print(i, ans)
-        # for _ in ans:
-        #     print(_)
+        for _ in ans:
+            print(_)
         print('path len = ', len(ans))
         break
 
