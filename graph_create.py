@@ -4,6 +4,7 @@ import heapq
 import datetime
 import json
 
+import os
 
 def create_window_graph():
 
@@ -259,14 +260,14 @@ def bfs(state):
                 # print(node)
                 print('GOAL!!!!!')
                 print('counter = ', counter)
-                return cur_path
+                return counter, cur_path
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
                 queue.append((suc, cur_path + [suc]))
 
     # print('fuck you no solution')
-    return []
+    return counter, []
 
 def dfs(state):
 
@@ -296,42 +297,95 @@ def dfs(state):
 
     # print('fuck you no solution')
     return []
-graph = create_simple_graph()
+# graph = create_simple_graph()
 # graph = create_window_graph()
 # graph = create_Ladder_graph()
 #
 # filename = "../ladder_k4_w1_state.json"
-# with open(filename, 'r') as infile:
-#     graph = json.load(infile)
-#     graph = {
-#        int(k):[int(vv) for vv in v]
-#        for k, v in graph.items()
-#    }
 
-print(graph)
+def read_json(filename):
+    with open(filename, 'r') as infile:
+        graph = json.load(infile)
+        graph = {
+           int(k):[int(vv) for vv in v]
+           for k, v in graph.items()
+       }
+    return graph
 
-t1 = datetime.datetime.now()
-for i in range(1,10):
-    pursuers = tuple(0 for i in range(i))
-    #dirty = [1] * len(graph)
-    #dirty[0] = 0
-    dirty = (0,) + tuple(1 for _ in range(len(graph)-1))
-    # print(dirty)
-    state = (pursuers, dirty)
 
-    # options of dfs, bfs, not_bfs
-    ans = not_bfs(state)
+def sort_func(x):
+    # print('-----sorted--------')
+    # print(x, len(read_json('./state/'+x)))
+    # if x[0] != 'w':
+    #     x = x.replace("_", '', 1).split('_')
+    # else:
+    #     x = x.split('_')
+    # print(x)
+    return len(read_json('./state/'+x))
+    # return (x[1],x[2],x[0])
 
-    if ans:
-        # print(i, ans)
-        for _ in ans:
-            print(_)
-        print('path len = ', len(ans))
-        break
 
-    else:
-        print('no ans for ', i)
+# read files
+path = './state/'
+files = []
+for filename in os.listdir(path):
+    if filename != '.DS_Store':
+        files.append(filename)
 
-t2 = datetime.datetime.now()
 
-print((t2-t1).total_seconds())
+# print(files)
+
+files = sorted(files, key=sort_func)
+ccounter = 0
+for file in files:
+    print('--------', file, '------------')
+    output_s = ''
+    output_s += str(file) + '\n'
+
+    graph = read_json(path +file)
+    print('len(graph) = ', len(graph))
+    output_s += 'V = ' + str(len(graph)) + '\n'
+
+    t1 = datetime.datetime.now()
+
+    for i in range(1, 10):
+        pursuers = tuple(0 for i in range(i))
+        dirty = (0,) + tuple(1 for _ in range(len(graph) - 1))
+        state = (pursuers, dirty)
+
+        # options of dfs, bfs, not_bfs
+        iterations, ans = bfs(state)
+
+        if ans:
+            # print('Ans for N = ', i)
+            output_s += str('Ans for N = ' +  str(i) + '\n')
+            for _ in ans:
+                #     print(_)
+                output_s = output_s + str(_) + '\n'
+            print('path len = ', len(ans))
+            print('counter = ', iterations)
+
+            output_s += 'path len = ' +  str(len(ans)) + '\n'
+            output_s += 'Counter = ' + str(iterations) + '\n'
+            break
+
+        else:
+            print('No ans for N = ', i )
+            output_s += str('No ans for N = ' +  str(i) + '\n')
+
+    t2 = datetime.datetime.now()
+
+    output_s += str((t2-t1).total_seconds()) +' s\n'
+
+    o_file = file.replace('json','txt')
+    with open('./ans/' + o_file, 'w+') as f:
+        f.write(output_s)
+    ccounter +=1
+
+
+
+# t2 = datetime.datetime.now()
+
+# print((t2-t1).total_seconds())
+
+
