@@ -98,9 +98,9 @@ def create_Ladder_graph():
     '''
     
     0-0-0-0-0
-    | |   | |
+    |x|   |x|
     0-0   0-0
-    | |   | |
+    |x|   |x|
     0-0-0-0-0    
     
     '''
@@ -142,27 +142,23 @@ def contaminate(p, ps, dirty):
     # new_dirty = dirty[:p] + (0,) + dirty[p + 1:]
     new_dirty = list(dirty[:])
     new_dirty[p] = 0
-    # print(p, ps, new_dirty)
     visited = set()
+
     while stack:
         node = stack.pop()
 
         # contaminate node if any neighbor is contaminated
         if any([ new_dirty[nei] for nei in graph[node]]):
-            # print('nei exist dirty', node)
             # new_dirty = new_dirty[:node] + (1,) + new_dirty[node + 1:]
             new_dirty[node] = 1
             for nei in graph[node]:
-
                 if nei in ps or nei in visited:
                     continue
                 else:
                     visited.add(nei)
                     if not dirty[nei]:
                         stack.append(nei)
-                    # new_dirty = new_dirty[:nei] + (1,) + new_dirty[nei + 1:]
                     new_dirty[nei] = 1
-    # print('new_dirty = ', new_dirty)
 
     return tuple(new_dirty)
 
@@ -207,6 +203,8 @@ def get_successors(state):
 
 def not_bfs(state):
 
+    # best first search
+
     # state= pursuers, tuple(dirty)
     queue = []
     visited = set()
@@ -237,7 +235,6 @@ def not_bfs(state):
                 heapq.heappush(queue, (sum(suc[1]), (suc, cur_path + [suc])))
                 #queue.append((suc, cur_path + [suc[0]]))
 
-    # print('fuck you no solution')
     return counter, []
 
 def bfs(state):
@@ -289,14 +286,15 @@ def dfs(state):
                 # print(node)
                 print('GOAL!!!!!')
                 print('counter = ', counter)
-                return cur_path
+                return counter, cur_path
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
                 queue.append((suc, cur_path + [suc]))
 
     # print('fuck you no solution')
-    return []
+    return counter, []
+
 # graph = create_simple_graph()
 # graph = create_window_graph()
 # graph = create_Ladder_graph()
@@ -336,28 +334,30 @@ for filename in os.listdir(path):
 # print(files)
 
 files = sorted(files, key=sort_func)
-print(files)
+# print(files)
 ccounter = 0
 for file in files:
+
+    print('--------', file, '------------')
     o_file = file.replace('json', 'txt')
     o_file =  o_file
 
-    # if o_file in os.listdir('./ans'):
-    #     continue
-    if file !=  '_ladder_k2_w2_state.json':
+    if o_file in os.listdir('./ans'):
         continue
-    print('--------', file, '------------')
+    # if file !=  '_ladder_k2_w2_state.json':
+    #     continue
     output_s = ''
     output_s += str(file) + '\n'
 
     graph = read_json(path +file)
+
     print('len(graph) = ', len(graph))
     output_s += 'V = ' + str(len(graph)) + '\n'
 
     t1 = datetime.datetime.now()
     start = 1
-    if file == '_ladder_k4_w2_state.json':
-        start = 5
+    # if file == '_ladder_k4_w2_state.json':
+    #     start = 5
     for i in range(start, 10):
         pursuers = tuple(0 for i in range(i))
         dirty = (0,) + tuple(1 for _ in range(len(graph) - 1))
@@ -387,16 +387,7 @@ for file in files:
 
     output_s += str((t2-t1).total_seconds()) +' s\n'
 
-    # o_file = file.replace('json','txt')
-    # o_file = 'best_' + o_file
     with open('./ans/'  + o_file  ,  'w+') as f:
         f.write(output_s)
     ccounter +=1
-
-
-
-# t2 = datetime.datetime.now()
-
-# print((t2-t1).total_seconds())
-
 
