@@ -8,8 +8,8 @@ from pprint import pprint
 scale = 2
 height = 230*scale
 width = 370*scale
-unit = 47*scale
-offset = 53*scale
+unit = 43*scale
+offset = 40*scale
 
 
 # draw - (x, y)
@@ -331,7 +331,9 @@ def build_map(img, filename, fix_r=20, fix_c=20):
     # pprint(count)
 
     def remove():
-        a = []# [(1, 8), (4, 9)]
+        # a = []# [(1, 8), (4, 9)]
+        a = []
+
         for i in range(len(a)):
             while a[i][0] in connection[a[i][1]]:
                 connection[a[i][1]].pop(connection[a[i][1]].index(a[i][0]))
@@ -339,7 +341,7 @@ def build_map(img, filename, fix_r=20, fix_c=20):
                 connection[a[i][0]].pop(connection[a[i][0]].index(a[i][1]))
 
     def add():
-        a =[]#  [(9, 15), (15, 21), (21, 27), ( 2, 9)]
+        a =[(1, 9)]
         for i in range(len(a)):
             connection[a[i][0]].append(a[i][1])
             connection[a[i][1]].append(a[i][0])
@@ -392,7 +394,8 @@ def main():
 
     # create_ladder(4, 1, 50, 50)
     # create_ladder(4, 2)
-    create_tree(1, 1, 65, 48)
+    create_ladder(2, 2, 45, 50)
+    # create_tree(1, 1, 65, 48)
     # create_ladder(4, 1)
     # create_window(3, 1)
 

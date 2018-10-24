@@ -88,6 +88,7 @@ width = 370*scale
 unit = 43*scale
 offset = 40*scale
 create_ladder(2, 2, 45, 50 )
+add =[(1, 9)]
 
 -----------------------------
 
@@ -125,4 +126,4 @@ unit = 43*scale
 offset = 40*scale
 create_ladder(4, 2, 45, 50 )
 
-remove = [(7, 14), (35, 42), (38, 48)]
+remove = [(7, 14), (35, 42), (38, 48), (1, 11)]

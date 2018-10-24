@@ -229,7 +229,7 @@ def not_bfs(state):
                 # print(node)
                 print('GOAL!!!!!')
                 print('counter = ', counter)
-                return cur_path
+                return counter, cur_path
             for suc in get_successors(node):
                 # print('----')
                 # print('suc = ', suc)
@@ -238,7 +238,7 @@ def not_bfs(state):
                 #queue.append((suc, cur_path + [suc[0]]))
 
     # print('fuck you no solution')
-    return []
+    return counter, []
 
 def bfs(state):
 
@@ -336,8 +336,16 @@ for filename in os.listdir(path):
 # print(files)
 
 files = sorted(files, key=sort_func)
+print(files)
 ccounter = 0
 for file in files:
+    o_file = file.replace('json', 'txt')
+    o_file =  o_file
+
+    # if o_file in os.listdir('./ans'):
+    #     continue
+    if file !=  '_ladder_k2_w2_state.json':
+        continue
     print('--------', file, '------------')
     output_s = ''
     output_s += str(file) + '\n'
@@ -347,8 +355,10 @@ for file in files:
     output_s += 'V = ' + str(len(graph)) + '\n'
 
     t1 = datetime.datetime.now()
-
-    for i in range(1, 10):
+    start = 1
+    if file == '_ladder_k4_w2_state.json':
+        start = 5
+    for i in range(start, 10):
         pursuers = tuple(0 for i in range(i))
         dirty = (0,) + tuple(1 for _ in range(len(graph) - 1))
         state = (pursuers, dirty)
@@ -377,8 +387,9 @@ for file in files:
 
     output_s += str((t2-t1).total_seconds()) +' s\n'
 
-    o_file = file.replace('json','txt')
-    with open('./ans/' + o_file, 'w+') as f:
+    # o_file = file.replace('json','txt')
+    # o_file = 'best_' + o_file
+    with open('./ans/'  + o_file  ,  'w+') as f:
         f.write(output_s)
     ccounter +=1
 
