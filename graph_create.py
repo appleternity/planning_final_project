@@ -3,28 +3,27 @@ from collections import deque
 import heapq
 import datetime
 import json
-
 import os
-
+import sys
 def create_window_graph():
 
-    #  0-0-0-0-0-0-0-0-0-0
-    #  |     |     |     |
-    #  0     0     0     0
-    #  |     |     |     |
-    #  0     0     0     0
-    #  |     |     |     |
-    #  0-0-0-0-0-0-0-0-0-0
-    #  |     |     |     |
-    #  0     0     0     0
-    #  |     |     |     |
-    #  0     0     0     0
-    #  |     |     |     |
-    #  0-0-0-0-0-0-0-0-0-0
-
     # create window graph with 45 vertex
-    graph = defaultdict(list)
+    #  0-0-0-0-0-0-0-0-0-0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0-0-0-0-0-0-0-0-0-0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0     0     0     0
+    #  |     |     |     |
+    #  0-0-0-0-0-0-0-0-0-0
 
+
+    graph = defaultdict(list)
 
     graph[0] = [1,30]
     for i in range(1,9):
@@ -66,6 +65,35 @@ def create_window_graph():
 
     return graph
 
+def create_simple_h_graph():
+    #
+    #  0
+    #  |
+    #  0   0
+    #  |   |
+    #  0-0-0
+    #  |   |
+    #  0   0
+    #  |
+    #  0
+
+    # create simple graph with 9 vertex
+    graph = defaultdict(list)
+    graph[0] = [1]
+    graph[1] = [0, 2]
+    graph[2] = [1, 3, 5]
+    graph[3] = [2, 4]
+    graph[4] = [3]
+    graph[5] = [2, 6]
+    graph[6] = [5, 7]
+    graph[7] = [6]
+    graph[8] = [7]
+
+    # for i in graph:
+    #     print(i, graph[i])
+
+    return graph
+
 def create_simple_graph():
     #
     #  0
@@ -78,7 +106,7 @@ def create_simple_graph():
     #  |
     #  0
 
-    # create window graph with 45 vertex
+    # create simgle graph with 7 vertex
     graph = defaultdict(list)
     graph[0] = [1]
     graph[1] = [0, 2]
@@ -133,6 +161,10 @@ def is_goal(state):
 
 def contaminate(p, ps, dirty):
 
+    # contaminate after move
+    # p:  original pos for a pursuer
+    # ps: list of pos ofr pursuers
+    # dirty: contaminate state
 
     # print('=== contaminate===')
     # print(p, ps, dirty)
@@ -143,7 +175,6 @@ def contaminate(p, ps, dirty):
     new_dirty = list(dirty[:])
     new_dirty[p] = 0
     visited = set()
-
     while stack:
         node = stack.pop()
 
@@ -164,13 +195,9 @@ def contaminate(p, ps, dirty):
 
 def get_successors(state):
 
-    # pass
     # state = (pursuers , G)
 
     pursuers, dirty =  state
-    # pursuers = pursuers
-    # print orinal p
-    # print('original = ', pursuers)
     next_state = set()
     next_pursurers = set()
 
@@ -182,10 +209,8 @@ def get_successors(state):
 
 
     for next_ps in next_pursurers:
-        # print('next_ps = ',next_ps)
         for origin_p, next_p in zip(pursuers, next_ps):
             if origin_p != next_p:
-                # print('origin_p, next_p = ', pursuers, next_ps, dirty)
                 new_dirty = dirty[:next_p] + (0,) + dirty[next_p + 1:]
                 if origin_p not in next_ps:
 
@@ -199,7 +224,6 @@ def get_successors(state):
 
     # return a list of (p, dirty)
     return next_state
-
 
 def not_bfs(state):
 
@@ -226,12 +250,9 @@ def not_bfs(state):
             if is_goal(node):
                 # print(node)
                 print('GOAL!!!!!')
-                print('counter = ', counter)
+                # print('counter = ', counter)
                 return counter, cur_path
             for suc in get_successors(node):
-                # print('----')
-                # print('suc = ', suc)
-                # print(-sum(suc[1]))
                 heapq.heappush(queue, (sum(suc[1]), (suc, cur_path + [suc])))
                 #queue.append((suc, cur_path + [suc[0]]))
 
@@ -240,6 +261,7 @@ def not_bfs(state):
 def bfs(state):
 
     # state= pursuers, tuple(dirty)
+    print('---- searching with bfs, N=', len(state[0]))
     queue = deque([])
     visited = set()
     queue.append((state, [state]))
@@ -251,7 +273,7 @@ def bfs(state):
             visited.add(node)
             # print('len(visited) = ', len(visited))
             if counter and counter % 10000 == 0:
-                print(counter, 'node = ',node[0], len(cur_path))
+                print('iteration:', counter)# , 'node = ',node[0], len(cur_path))
             counter +=1
             if is_goal(node):
                 # print(node)
@@ -301,7 +323,9 @@ def dfs(state):
 #
 # filename = "../ladder_k4_w1_state.json"
 
+
 def read_json(filename):
+    # parse json file
     with open(filename, 'r') as infile:
         graph = json.load(infile)
         graph = {
@@ -312,6 +336,8 @@ def read_json(filename):
 
 
 def sort_func(x):
+    # sort json file with number of vertex
+
     # print('-----sorted--------')
     # print(x, len(read_json('./state/'+x)))
     # if x[0] != 'w':
@@ -324,70 +350,67 @@ def sort_func(x):
 
 
 # read files
-path = './state/'
+path = './'
 files = []
-for filename in os.listdir(path):
-    if filename != '.DS_Store':
-        files.append(filename)
+# for filename in os.listdir(path):
+#     if filename != '.DS_Store':
+#         files.append(filename)
+output_s = ''
+if len(sys.argv) == 2:
+    file = sys.argv[1]
+    # print(sys.argv)
 
-
-# print(files)
-
-files = sorted(files, key=sort_func)
-# print(files)
-ccounter = 0
-for file in files:
+    # files = sorted(files, key=sort_func)
+    # for file in files:
 
     print('--------', file, '------------')
     o_file = file.replace('json', 'txt')
     o_file =  o_file
 
-    if o_file in os.listdir('./ans'):
-        continue
+
     # if file !=  '_ladder_k2_w2_state.json':
     #     continue
-    output_s = ''
+
     output_s += str(file) + '\n'
 
     graph = read_json(path +file)
+else:
+    graph = create_simple_graph()
+    o_file = 'simple_graph.txt'
+output_s += 'V = ' + str(len(graph)) + '\n'
 
-    print('len(graph) = ', len(graph))
-    output_s += 'V = ' + str(len(graph)) + '\n'
+t1 = datetime.datetime.now()
 
-    t1 = datetime.datetime.now()
-    start = 1
-    # if file == '_ladder_k4_w2_state.json':
-    #     start = 5
-    for i in range(start, 10):
-        pursuers = tuple(0 for i in range(i))
-        dirty = (0,) + tuple(1 for _ in range(len(graph) - 1))
-        state = (pursuers, dirty)
 
-        # options of dfs, bfs, not_bfs
-        iterations, ans = bfs(state)
+# search from N=1 until find answer
+for i in range(1, 10):
+    pursuers = tuple(0 for i in range(i))
+    dirty = (0,) + tuple(1 for _ in range(len(graph) - 1))
+    state = (pursuers, dirty)
 
-        if ans:
-            # print('Ans for N = ', i)
-            output_s += str('Ans for N = ' +  str(i) + '\n')
-            for _ in ans:
-                #     print(_)
-                output_s = output_s + str(_) + '\n'
-            print('path len = ', len(ans))
-            print('counter = ', iterations)
+    # options of dfs, bfs, not_bfs
+    iterations, ans = bfs(state)
 
-            output_s += 'path len = ' +  str(len(ans)) + '\n'
-            output_s += 'Counter = ' + str(iterations) + '\n'
-            break
+    if ans:
+        # print('Ans for N = ', i)
+        output_s += str('Ans for N = ' +  str(i) + '\n')
+        for _ in ans:
+            #     print(_)
+            output_s = output_s + str(_) + '\n'
+        print('path len = ', len(ans))
+        # print('counter = ', iterations)
 
-        else:
-            print('No ans for N = ', i )
-            output_s += str('No ans for N = ' +  str(i) + '\n')
+        output_s += 'path len = ' +  str(len(ans)) + '\n'
+        output_s += 'Counter = ' + str(iterations) + '\n'
+        break
 
-    t2 = datetime.datetime.now()
+    else:
+        print('No ans for N = ', i )
+        output_s += str('No ans for N = ' +  str(i) + '\n')
 
-    output_s += str((t2-t1).total_seconds()) +' s\n'
+t2 = datetime.datetime.now()
 
-    with open('./ans/'  + o_file  ,  'w+') as f:
-        f.write(output_s)
-    ccounter +=1
+output_s += str((t2-t1).total_seconds()) +' s\n'
 
+with open('./ans_'  + o_file  ,  'w+') as f:
+    f.write(output_s)
