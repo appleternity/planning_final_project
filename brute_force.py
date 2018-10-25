@@ -377,7 +377,7 @@ if len(sys.argv) == 2:
 else:
     graph = create_simple_graph()
     o_file = 'simple_graph.txt'
-output_s += 'V = ' + str(len(graph)) + '\n'
+output_s += 'Number of vertices in graph: ' + str(len(graph)) + '\n'
 
 t1 = datetime.datetime.now()
 
@@ -393,24 +393,28 @@ for i in range(1, 10):
 
     if ans:
         # print('Ans for N = ', i)
-        output_s += str('Ans for N = ' +  str(i) + '\n')
+        output_s += str('Minimum pursuers is N = ' +  str(i) + '\n')
+        output_s = output_s + "Shortest path start: \n"
         for _ in ans:
             #     print(_)
-            output_s = output_s + str(_) + '\n'
-        print('path len = ', len(ans))
+
+            output_s = output_s + "\t" + str(_[0]) + '\n'
+        print('\npath len = ', len(ans))
         # print('counter = ', iterations)
 
-        output_s += 'path len = ' +  str(len(ans)) + '\n'
-        output_s += 'Counter = ' + str(iterations) + '\n'
+        output_s += 'Path length is ' +  str(len(ans)) + '\n'
+        # output_s += 'Counter = ' + str(iterations) + '\n'
         break
 
     else:
-        print('No ans for N = ', i )
-        output_s += str('No ans for N = ' +  str(i) + '\n')
+        pass
+        # print('No ans for N = ', i )
+        #output_s += str('No ans for N = ' +  str(i) + '\n')
 
 t2 = datetime.datetime.now()
-
+output_s += 'Time elapsed: '
 output_s += str((t2-t1).total_seconds()) +' s\n'
 
-with open('./ans_'  + o_file  ,  'w+') as f:
+print(o_file)
+with open('./ans_brute_force'  + o_file[6:]  ,  'w+') as f:
     f.write(output_s)
