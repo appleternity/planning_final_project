@@ -347,12 +347,13 @@ def cc_similiar(graph, p1, p2, transition_table, cc_table):
         return False
     """
 
-def search(num_p, name=""):
+def search(num_p, filename, name=""):
     from pprint import pprint
 
     # load data
-    #graph = load_graph("state/{}.json".format(name))
-    graph = create_simple_graph()
+    graph = load_graph(filename)
+    #graph = create_simple_h_graph()
+    #graph = create_Ladder_graph()
     
     # "4": "[((2, 4), ({5, 6}, {3}, {0, 1}))]",
     # "0": "[((0, 1), ({2, 3, 4, 5, 6},)), ((1, 0), ({2, 3, 4, 5, 6},)), ((0, 0), ({1, 2, 3, 4, 5, 6},))]",
@@ -429,6 +430,7 @@ def search(num_p, name=""):
         # check goal
         if not region:
             print(node)
+            print(parent)
             print("Goal")
             
             # find path
@@ -440,7 +442,9 @@ def search(num_p, name=""):
                     break
                 path.append(parent)
                 current = parent
-            
+            print("ABS path = ", path[::-1])
+            refinement(S, M, graph, gamma, path[::-1], num_p)
+
             return path[::-1]
 
         # children
@@ -449,6 +453,7 @@ def search(num_p, name=""):
         for child in children:
             if child not in alive and child not in visited:
                 container.append((child, node))
+                alive.add(child)
     
     print("No Answer")
 
@@ -472,6 +477,130 @@ def get_next_children(M, S, graph, state, region):
             print(next_region)
             print(state, region, next_state)
     return children
+
+def refinement(S, M, graph, gamma, path, num_p):
+
+    total_path = []
+    initial_p = tuple(0 for i in range(0, num_p))
+
+    for S1, S2 in zip(path[:-1], path[1:]):
+        abs1, L1 = S1
+        abs2, L2 = S2
+        path = refine_in_abs(S, M, graph, gamma, abs1, L1, abs2, L2, initial_p, num_p)
+        total_path.append(path)
+        initial_p = path[-1]
+        print(path)
+    print("========== refinement result ===========")
+    pprint(total_path)
+
+def build_real_state(p, cc_list, L2, graph):
+    dirty_region = {c for l in L2 for c in cc_list[l]}
+    c = tuple(1 if g in dirty_region else 0 for g in graph.keys())
+    return (p, c)
+
+def refine_in_abs(S, M, graph, gamma, abs1, L1, abs2, L2, initial_p, num_p):
+    visited = {}
+    alive = set()
+    #initial_p = tuple(0 for i in range(0, num_p))
+    initial_abs = gamma[initial_p]
+    initial_region = []
+    initial_state = (initial_p, None)
+    #print(initial_state)
+
+    current_real_set = {p:cc_list for p, cc_list in S[abs1]}
+    target_real_set = [
+        build_real_state(p, cc_list, L2, graph)
+        for p, cc_list in S[abs2]
+    ]
+    target_real_set = {
+        p : s
+        for p, s in target_real_set
+    }
+    #pprint(current_real_set)
+    #pprint(target_real_set)
+    
+    container = deque([initial_state])
+    alive.add(initial_state)
+    while container:
+        node, parent = container.popleft()
+        #print("current node = ", node)
+
+        # check goal if node is in target_real_set
+        if node in target_real_set:
+            #print(node, "in target. parent =", parent)
+            #print(target_real_set)
+            # generate contaminated for parent
+            dirty_region = {c for l in L1 for c in current_real_set[parent][l]}
+            dirty_region = tuple(1 if g in dirty_region else 0 for g in graph.keys())
+            new_dirty = contaminate(parent, node, dirty_region, graph)
+            
+            #print(dirty_region)
+            #print(new_dirty)
+            #print(target_real_set[node])
+
+            if new_dirty == target_real_set[node]:
+                # find path
+                path = [node, parent]
+                current = parent
+                while True:
+                    parent = visited[current]
+                    if parent is None:
+                        break
+                    path.append(parent)
+                    current = parent
+                #print(path[::-1])
+                return path[::-1]
+        
+        # check available
+        if node not in current_real_set:
+            continue
+        
+        visited[node] = parent
+        children = {
+            tuple(ppp if i != ii else next_p for ii, ppp in enumerate(node))
+            for i, pp in enumerate(node)
+                for next_p in graph[pp]
+        }
+        #print(children)
+
+        for child in children:
+            if child not in alive and child not in visited:
+                container.append((child, node))
+                alive.add(child)
+    print("GG refinement path not found between {} & {}".format(str(abs1), str(abs2)))
+
+def contaminate(p, ps, dirty, graph):
+    #print("contaminate")
+
+    new_dirty = list(dirty[:])
+    move_pos = None
+    for p1, p2 in zip(p, ps):
+        if p1 != p2:
+            move_pos = p1
+            new_dirty[p2] = 0
+            new_dirty[p1] = 0
+            break
+            
+    stack = [move_pos]
+    visited = set()
+
+    while stack:
+        node = stack.pop()
+
+        # contaminate node if any neighbor is contaminated
+        if any([ new_dirty[nei] for nei in graph[node]]):
+            # new_dirty = new_dirty[:node] + (1,) + new_dirty[node + 1:]
+            new_dirty[node] = 1
+            for nei in graph[node]:
+                if nei in ps or nei in visited:
+                    continue
+                else:
+                    visited.add(nei)
+                    if not dirty[nei]:
+                        stack.append(nei)
+                    new_dirty[nei] = 1
+
+    return tuple(new_dirty)
 
 def debug():
     import cv2
@@ -523,20 +652,25 @@ def main():
     #simple_graph = create_simple_graph()
     #abstract(simple_graph, 2)
     
-    ladder_graph = create_Ladder_graph()
-    abstract(ladder_graph, 4)
+
+    #simple_graph = create_simple_h_graph()
+    #abstract(simple_graph, 2)
+
+    #ladder_graph = create_Ladder_graph()
+    #abstract(ladder_graph, 4)
     
     #window_graph = create_window_graph()
     #abstract(window_graph, 4)
     
-    #filename = "state/_ladder_k2_w2_state.json"
-    #graph = load_graph(filename)
-    #abstract(graph, 5)
+    filename = "state/_ladder_k3_w1_state.json"
+    num_p = 3
+    graph = load_graph(filename)
+    abstract(graph, num_p)
 
     #result = cc(simple_graph, (2, 2))
     #print(result)
 
-    path = search(4, "")
+    path = search(num_p, filename, "")
     pprint(path)
     #debug()
 

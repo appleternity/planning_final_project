@@ -118,6 +118,37 @@ def create_window_graph():
 
     return graph
 
+def create_simple_h_graph():
+    #
+    #  0   0
+    #  |   |
+    #  0   0
+    #  |   |
+    #  0-0-0
+    #  |   |
+    #  0   0
+    #  |   |
+    #  0   0
+
+    # create window graph with 45 vertex
+    graph = defaultdict(list)
+    graph[0] = [1]
+    graph[1] = [0, 2]
+    graph[2] = [1, 3, 5]
+    graph[3] = [2, 4]
+    graph[4] = [3]
+    graph[5] = [2, 6]
+    graph[6] = [5,7, 9]
+    graph[7] = [6, 8]
+    graph[8] = [7]
+    graph[9] = [6, 10]
+    graph[10]= [9]
+
+    # for i in graph:
+    #     print(i, graph[i])
+
+    return graph
+
 def load_graph(filepath):
     with open(filepath, 'r') as infile:
         data = json.load(infile)
@@ -127,3 +158,5 @@ def load_graph(filepath):
         for key, val in data.items()        
     }
     return data
+
+
