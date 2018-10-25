@@ -20,7 +20,6 @@ def abstract(graph, num_p, version=""):
     transition_table = {}
     cc_table = {}
     gamma = {}
-    # TODO:put cc here
     Q = [tuple(0 for i in range(0, num_p))]
     visited = set()
     alive = set(Q)
@@ -46,25 +45,49 @@ def abstract(graph, num_p, version=""):
             for i, pp in enumerate(p)
                 for next_p in graph[pp]
         }
+        cc1 = cc(graph, p, cc_table)
 
         for next_p in children:
             if next_p in visited:
                 if gamma[p] == gamma[next_p]:
                     continue
                 
-                if cc_similiar(graph, p, next_p, transition_table, cc_table):
+                cc2 = cc(graph, next_p, cc_table)
+                sim, trans, reverse_trans = cc_similiar(graph, p, next_p, cc1, cc2, transition_table, cc_table)
+                if sim:
                     if gamma[p] is None:
                         gamma[p] = gamma[next_p]
-                        #S[gamma[p]].append(p)
-                        S[gamma[p]].add(p)
+                        cc_order = S[gamma[next_p]][next_p]
+                        try:
+                            new_cc = tuple(reverse_trans[cc][0] for cc in cc_order)
+                        except KeyError as error:
+                            print("key error", error)
+                            print(trans)
+                            print(reverse_trans)
+                            print(cc_order)
+                            quit()
+                        S[gamma[p]][p] = new_cc
+                        
                     else:
                         # resolve conflict
                         abs1 = gamma[p]
                         abs2 = gamma[next_p]
                         
                         # merge S
+                        cc_order = S[abs1][p]
+                        new_order = S[abs2][next_p]
+                        mapping = []
+                        for c in cc_order:
+                            mapping.append(new_order.index(trans[c][0]))
+                        
+                        if not all(i == m for i, m in enumerate(mapping)):
+                            S[abs2] = {
+                                p : tuple(c[m] for m in mapping)
+                                for p, c in S[abs2].items()
+                            }
+
                         S[abs1].update(S[abs2])
-                        for temp_p in S[abs2]:
+                        for temp_p in S[abs2].keys():
                             gamma[temp_p] = abs1
                         S.pop(abs2)
 
@@ -95,7 +118,9 @@ def abstract(graph, num_p, version=""):
             # S.insert(abstract(p)), gamma_p <-abstract(p)
             abs_p = abs_index
             abs_index += 1
-            S[abs_p] = {p}
+            
+            S[abs_p] = {p : tuple(tuple(sorted(c)) for c in cc1)}
+            #print(S[abs_p])
             gamma[p] = abs_p
             M[gamma[p]] = set()
 
@@ -138,6 +163,11 @@ def abstract(graph, num_p, version=""):
             M.pop(v)
 
     # merge cc_table information
+    S = {
+        key : tuple((p, tuple(set(c) for c in c_list)) for p, c_list in val.items())
+        for key, val in S.items()        
+    }
+    """
     new_S = {}
     for key, p_list in S.items():
         result = []
@@ -153,7 +183,6 @@ def abstract(graph, num_p, version=""):
                     if res:
                         result.append((p, tuple(cc2_p)))
 
-        """
         order = None
         for i, p in enumerate(p_list):
             cc = sorted(cc_table[p])
@@ -168,10 +197,9 @@ def abstract(graph, num_p, version=""):
                             res.append(c)
                             break
                 result.append((p, tuple(res)))
-        """
         new_S[key] = result
     S = new_S
-    
+    """
     with open("S{}.pkl".format(version), 'wb') as outfile:
         pickle.dump(S, outfile)
 
@@ -223,6 +251,27 @@ def transition(cc1, cc2):
     #if len(cc1) != len(cc2):
     #    return False
 
+    cc1 = [(c, tuple(sorted(c))) for c in cc1]
+    cc2 = [(c, tuple(sorted(c))) for c in cc2]
+
+    trans = {}
+    reverse_trans = {}
+    count = 0
+    for c1, c1_t in cc1:
+        for c2, c2_t in cc2:
+            if c1 & c2:
+                count += 1
+                
+                if c1_t not in trans:
+                    trans[c1_t] = []
+                trans[c1_t].append(c2_t)
+                
+                if c2_t not in reverse_trans:
+                    reverse_trans[c2_t] = []
+                reverse_trans[c2_t].append(c1_t)
+
+    return trans, reverse_trans, count
+
     trans = []
     for c1 in cc1:
         for c2 in cc2:
@@ -271,42 +320,57 @@ def transition(cc1, cc2):
     """
 
 # trainsition
-def cc_similiar(graph, p1, p2, transition_table, cc_table):
-    cc1 = cc(graph, p1, cc_table)
-    cc2 = cc(graph, p2, cc_table)
+def cc_similiar(graph, p1, p2, cc1, cc2, transition_table, cc_table):
+    #cc1 = cc(graph, p1, cc_table)
+    #cc2 = cc(graph, p2, cc_table)
 
-    trans = transition(cc1, cc2)
+    trans, reverse_trans, count = transition(cc1, cc2)
     key = tuple(sorted([p1, p2]))
     transition_table[key] = trans
     
+    """
+    print(trans)
+    print(reverse_trans)
+    print(len(trans))
+    print(len(reverse_trans))
+    print(len(cc1))
+    print(count)
+    print(len(cc1))
+    """
+
     # every component has a mapping
     if len(cc1) != len(cc2):
-        return False
+        return False, None, None
 
-    # many-to-many mapping
-    if len(trans) != len(cc1):
-        return False
+    # remove many-to-many mapping
+    if count != len(cc1):
+        return False, None, None
     
     # exist only once
+    if len(trans) == len(reverse_trans) == len(cc1):
+        return True, trans, reverse_trans
+    
+    return False, None, None
+
+    """
     c1_set = set()
     c2_set = set()
     for c1, c2 in trans:
         if c1 in c1_set:
-            return False
+            return False, None
         else:
-            c1_set.add(tuple(c1))
+            c1_set.add(c1)
 
         if c2 in c2_set:
-            return False
+            return False, None
         else:
-            c2_set.add(tuple(c2))
+            c2_set.add(c2)
 
     if len(c1_set) == len(cc1) and len(c2_set) == len(cc2):
-        return True
+        return True, trans
     else:
-        return False
+        return False, None
 
-    """
     # length does not match
     if len(cc1) != len(cc2):
         return False
@@ -352,6 +416,7 @@ def search(num_p, filename, name=""):
 
     # load data
     graph = load_graph(filename)
+    #graph = create_simple_graph()
     #graph = create_simple_h_graph()
     #graph = create_Ladder_graph()
     
@@ -383,6 +448,7 @@ def search(num_p, filename, name=""):
 
     # "(5, 6)": "{(6, 6)}",
     # "((2, 5), (2, 5))": "[({6}, {6}), ({3, 4}, {4}), ({0, 1}, {0, 1, 2})]",
+    """
     with open("transition_table{}.json".format(name), 'r') as infile:
         transition_table = json.load(infile)
         transition_table = {
@@ -398,7 +464,7 @@ def search(num_p, filename, name=""):
             ]
             for key, val in transition_table.items()        
         }
-
+    """
     # "(4, 5)": 16,
     with open("gamma{}.json".format(name), 'r') as infile:
         gamma = json.load(infile)
@@ -429,8 +495,7 @@ def search(num_p, filename, name=""):
 
         # check goal
         if not region:
-            print(node)
-            print(parent)
+            print("node = ", node, "parent = ", parent)
             print("Goal")
             
             # find path
@@ -466,16 +531,21 @@ def get_next_children(M, S, graph, state, region):
             for r in region:
                 for p2, cc2 in S[state]:
                     if not c1 & cc2[r]:
-                        if next_state == 79:
-                            print(c1, cc2, r)
+                        if next_state == 3 and state == 22:
+                            print("=========================")
+                            print("c1, next {}, ".format(next_state), c1)
+                            print(p1)
+                            print()
+                            print("cc2, current {}, ".format(state), cc2[r])
+                            print(p2)
+                            print("r", r)
+                            print("=========================")
                         break
                 else:
                     next_region.append(i)
                     break
         children.append((next_state, tuple(next_region)))
-        if next_state == 79:
-            print(next_region)
-            print(state, region, next_state)
+    
     return children
 
 def refinement(S, M, graph, gamma, path, num_p):
@@ -623,7 +693,7 @@ def debug():
         (50, 20),
     ]
     name = ""
-    target_state = 22
+    target_state = 45
     scale = 5
     height = 40*scale
     width = 60*scale
@@ -635,8 +705,8 @@ def debug():
     with open("S{}.pkl".format(name), 'rb') as infile:
         S = pickle.load(infile)
     
-    print(len(S[22]))
-    for count, (p, cc) in enumerate(S[22]):
+    print("s size = ", len(S[target_state]))
+    for count, (p, cc) in enumerate(S[target_state]):
         img = np.zeros((height, width), np.uint8)
         img += 255
 
@@ -649,21 +719,24 @@ def debug():
         cv2.imwrite("temp/{}_{}_{}.png".format(target_state, count, str(p)), img)
 
 def main():
+    #debug()
+    #quit()
+
+    num_p = 2
     #simple_graph = create_simple_graph()
-    #abstract(simple_graph, 2)
-    
+    #abstract(simple_graph, num_p)
 
     #simple_graph = create_simple_h_graph()
     #abstract(simple_graph, 2)
 
     #ladder_graph = create_Ladder_graph()
-    #abstract(ladder_graph, 4)
+    #abstract(ladder_graph, num_p)
     
     #window_graph = create_window_graph()
     #abstract(window_graph, 4)
     
-    filename = "state/_ladder_k3_w1_state.json"
-    num_p = 3
+    #filename = "state/_ladder_k3_w1_state.json"
+    filename = "state/_tree_k2_w1_state.json"
     graph = load_graph(filename)
     abstract(graph, num_p)
 
@@ -672,7 +745,6 @@ def main():
 
     path = search(num_p, filename, "")
     pprint(path)
-    #debug()
 
 if __name__ == "__main__":
     main()
