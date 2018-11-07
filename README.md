@@ -1,39 +1,69 @@
 ASU Planning Final Project
 --------------------------
 
-Contents:
 
-    1) How to run "benchmark_brute_force.py"
-    2) How to run paper "benchmark.py"
-    3) How to generate the graph
-
-
-1) How to run "benchmark_brute_force.py"
------------------------------------------
+1) How to run "brute_force.py"
+------------------------------
 Go to the submission folder:
+
+```
 >> cd submission
->> python3 benchmark_brute_force.py state/_tree_k1_w1_state.json
+>> python3 brute_force.py state/_tree_k1_w1_state.json
+```
+If no json filename given in last command, the default graph would be looks like this
 
-You will see a output file ans__tree_k1_w1_state.txt in the same directory
+```
+    0
+    |
+    0
+    |
+    0-0-0
+    |
+    0
+    |
+    0
+``` 
 
+After execution, you will see a output file ans_brute_force_tree_k1_w1_state.txt in the same directory contains the result.
 
+```
 state/_tree_k1_w1_state.json
-V = 10
-No ans for N = 1
-Ans for N = 2
-((0, 0), (0, 1, 1, 1, 1, 1, 1, 1, 1, 1))
-((1, 0), (0, 0, 1, 1, 1, 1, 1, 1, 1, 1))
-((2, 0), (0, 0, 0, 1, 1, 1, 1, 1, 1, 1))
-((3, 0), (0, 0, 0, 0, 1, 1, 1, 1, 1, 1))
-((4, 0), (0, 1, 1, 1, 0, 1, 1, 1, 1, 1))
-((4, 1), (0, 0, 1, 1, 0, 1, 1, 1, 1, 1))
-((4, 2), (0, 0, 0, 1, 0, 1, 1, 1, 1, 1))
-((4, 3), (0, 0, 0, 0, 0, 1, 1, 1, 1, 1))
-((5, 3), (0, 0, 0, 0, 0, 0, 1, 1, 1, 1))
-((5, 7), (0, 0, 0, 0, 0, 0, 1, 0, 1, 1))
-((6, 7), (0, 0, 0, 0, 0, 0, 0, 0, 1, 1))
-((6, 8), (0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
-((6, 9), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-path len = 13
-Counter = 249
-0.005872 s
+Number of vertices in graph: 10
+Minimum pursuers is N = 2
+Shortest path start: 
+	(0, 0)
+	(1, 0)
+	(2, 0)
+	(3, 0)
+	(4, 0)
+	(4, 1)
+	(4, 2)
+	(4, 3)
+	(5, 3)
+	(5, 7)
+	(6, 7)
+	(6, 8)
+	(6, 9)
+Path length is 13
+Time elapsed: 0.00677 s
+
+```
+
+2) How to run our "benchmark.py"
+--------------------------------
+Go to the submission folder:
+
+```
+>> cd submission
+>> python3 benchmark.py state/_tree_k1_w1_state.json
+```
+
+After execution, you will see a output file ans_benchmark_tree_k1_w1_state.txt in the same directory contains the result.
+
+
+3) How to draw maps and figures:
+-----------------------------
+We use paraneters in fig_config.txt to generate all figures.
+
+We already generated all maps needed. Please DO NOT run this file.
+
