@@ -1,220 +1,10 @@
 from copy import copy, deepcopy
 import random
-
-
-class Counter(dict):
-    """
-    A counter keeps track of counts for a set of keys.
-
-    The counter class is an extension of the standard python
-    dictionary type.  It is specialized to have number values
-    (integers or floats), and includes a handful of additional
-    functions to ease the task of counting data.  In particular,
-    all keys are defaulted to have value 0.  Using a dictionary:
-
-    a = {}
-    print a['test']
-
-    would give an error, while the Counter class analogue:
-
-    >>> a = Counter()
-    >>> print a['test']
-    0
-
-    returns the default 0 value. Note that to reference a key
-    that you know is contained in the counter,
-    you can still use the dictionary syntax:
-
-    >>> a = Counter()
-    >>> a['test'] = 2
-    >>> print a['test']
-    2
-
-    This is very useful for counting things without initializing their counts,
-    see for example:
-
-    >>> a['blah'] += 1
-    >>> print a['blah']
-    1
-
-    The counter also includes additional functionality useful in implementing
-    the classifiers for this assignment.  Two counters can be added,
-    subtracted or multiplied together.  See below for details.  They can
-    also be normalized and their total count and arg max can be extracted.
-    """
-    def __getitem__(self, idx):
-        self.setdefault(idx, 0)
-        return dict.__getitem__(self, idx)
-
-    def incrementAll(self, keys, count):
-        """
-        Increments all elements of keys by the same count.
-
-        >>> a = Counter()
-        >>> a.incrementAll(['one','two', 'three'], 1)
-        >>> a['one']
-        1
-        >>> a['two']
-        1
-        """
-        for key in keys:
-            self[key] += count
-
-    def argMax(self):
-        """
-        Returns the key with the highest value.
-        """
-        if len(self.keys()) == 0: return None
-        all = self.items()
-        values = [x[1] for x in all]
-        maxIndex = values.index(max(values))
-        return all[maxIndex][0]
-
-    def sortedKeys(self):
-        """
-        Returns a list of keys sorted by their values.  Keys
-        with the highest values will appear first.
-
-        >>> a = Counter()
-        >>> a['first'] = -2
-        >>> a['second'] = 4
-        >>> a['third'] = 1
-        >>> a.sortedKeys()
-        ['second', 'third', 'first']
-        """
-        sortedItems = self.items()
-        sign = lambda x: (1, -1)[x < 0]
-        compare = lambda x, y:  sign(y[1] - x[1])
-        sortedItems.sort(cmp=compare)
-        return [x[0] for x in sortedItems]
-
-    def totalCount(self):
-        """
-        Returns the sum of counts for all keys.
-        """
-        return sum(self.values())
-
-    def normalize(self):
-        """
-        Edits the counter such that the total count of all
-        keys sums to 1.  The ratio of counts for all keys
-        will remain the same. Note that normalizing an empty
-        Counter will result in an error.
-        """
-        total = float(self.totalCount())
-        if total == 0: return
-        for key in self.keys():
-            self[key] = self[key] / total
-
-    def divideAll(self, divisor):
-        """
-        Divides all counts by divisor
-        """
-        divisor = float(divisor)
-        for key in self:
-            self[key] /= divisor
-
-    def copy(self):
-        """
-        Returns a copy of the counter
-        """
-        return Counter(dict.copy(self))
-
-    def __mul__(self, y ):
-        """
-        Multiplying two counters gives the dot product of their vectors where
-        each unique label is a vector element.
-
-        >>> a = Counter()
-        >>> b = Counter()
-        >>> a['first'] = -2
-        >>> a['second'] = 4
-        >>> b['first'] = 3
-        >>> b['second'] = 5
-        >>> a['third'] = 1.5
-        >>> a['fourth'] = 2.5
-        >>> a * b
-        14
-        """
-        sum = 0
-        x = self
-        if len(x) > len(y):
-            x,y = y,x
-        for key in x:
-            if key not in y:
-                continue
-            sum += x[key] * y[key]
-        return sum
-
-    def __radd__(self, y):
-        """
-        Adding another counter to a counter increments the current counter
-        by the values stored in the second counter.
-
-        >>> a = Counter()
-        >>> b = Counter()
-        >>> a['first'] = -2
-        >>> a['second'] = 4
-        >>> b['first'] = 3
-        >>> b['third'] = 1
-        >>> a += b
-        >>> a['first']
-        1
-        """
-        for key, value in y.items():
-            self[key] += value
-
-    def __add__( self, y ):
-        """
-        Adding two counters gives a counter with the union of all keys and
-        counts of the second added to counts of the first.
-
-        >>> a = Counter()
-        >>> b = Counter()
-        >>> a['first'] = -2
-        >>> a['second'] = 4
-        >>> b['first'] = 3
-        >>> b['third'] = 1
-        >>> (a + b)['first']
-        1
-        """
-        addend = Counter()
-        for key in self:
-            if key in y:
-                addend[key] = self[key] + y[key]
-            else:
-                addend[key] = self[key]
-        for key in y:
-            if key in self:
-                continue
-            addend[key] = y[key]
-        return addend
-
-    def __sub__( self, y ):
-        """
-        Subtracting a counter from another gives a counter with the union of all keys and
-        counts of the second subtracted from counts of the first.
-
-        >>> a = Counter()
-        >>> b = Counter()
-        >>> a['first'] = -2
-        >>> a['second'] = 4
-        >>> b['first'] = 3
-        >>> b['third'] = 1
-        >>> (a - b)['first']
-        -5
-        """
-        addend = Counter()
-        for key in self:
-            if key in y:
-                addend[key] = self[key] - y[key]
-            else:
-                addend[key] = self[key]
-        for key in y:
-            if key in self:
-                continue
-            addend[key] = -1 * y[key]
-        return addend
+from util import Counter, Array
+from display import Display
+import os.path
+import json
+import numpy as np
 
 class State:
     _N = None
@@ -228,7 +18,6 @@ class State:
 
     def __init__(self, p=None, c=None):
         """
-
         :param p: tuple of int, position for all pursuer. e.g: (1,1,1,2,3)
         :param c: tuple of int, clean: 0, dirty:1 e.g: (0,1,1,1,1)
         """
@@ -237,24 +26,29 @@ class State:
         self.pursuers =  tuple(0 for _ in range(State._N)) if p is None else p
         self.dirty = (0,) + tuple(1 for _ in range(len(State._GRAGH) - 1)) if c is None else c
 
-
     def __hash__(self):
         return hash((self.pursuers, self.dirty))
 
+    def __str__(self):
+        return "State({}, {})".format(str(self.pursuers), str(self.dirty))
 
-    def contaminate(self, p, ps, dirty):
+    def contaminate(self, p_old, p_new, dirty_old):
         """
         return: tuple(new_dirty)
         """
 
+        dirty = dirty_old
         new_dirty = list(dirty[:])
         move_pos = None
-        for p1, p2 in zip(p, ps):
+        for p1, p2 in zip(p_old, p_new):
             if p1 != p2:
                 move_pos = p1
                 new_dirty[p2] = 0
                 new_dirty[p1] = 0
                 break
+        
+        if move_pos in p_new:
+            return dirty
 
         stack = [move_pos]
         visited = set()
@@ -267,7 +61,7 @@ class State:
                 # new_dirty = new_dirty[:node] + (1,) + new_dirty[node + 1:]
                 new_dirty[node] = 1
                 for nei in State._GRAGH[node]:
-                    if nei in ps or nei in visited:
+                    if nei in p_new or nei in visited:
                         continue
                     else:
                         visited.add(nei)
@@ -282,16 +76,16 @@ class State:
         return [action,action, ... ...]
         """
         pursuers, dirty = self.pursuers, self.dirty
-        next_pursuers = set()
+        #next_pursuers = set()
+        action_set = set()
 
         for i in range(len(pursuers)):
             for p in State._GRAGH[pursuers[i]]:
-                next_p = (pursuers[:i] + (p,) + pursuers[i + 1:], Action(i, p))
+                a = Action(i, p)
+                if a not in action_set:
+                    action_set.add(a)
 
-                if next_p not in next_pursuers:
-                    next_pursuers.add(next_p)
-
-        return [i for i in next_pursuers]
+        return [i for i in action_set]
 
     def get_successors(self):
         """
@@ -321,12 +115,9 @@ class State:
 
         return [i for i in next_state]
 
-        pass
-    
     def is_goal(self):
         # return True/False
         return sum(self.dirty) == 0
-
 
     def do_action(self, action):
         """
@@ -337,16 +128,13 @@ class State:
 
         # update cur state, contaminate
         # next_ps = ori [pid]-> next
-
+        #print(action)
         next_ps = self.pursuers[:action.p_id] + (action.next_node_id,) + self.pursuers[action.p_id + 1:]
-        new_dirty = self.dirty[:action.p_id] + (0,) + self.dirty[action.p_id + 1:]
-
-        if action.p_id not in next_ps:
-            new_dirty = self.contaminate(action.p_id, next_ps, new_dirty)
+        #new_dirty = self.dirty[:action.p_id] + (0,) + self.dirty[action.p_id + 1:]
+        new_dirty = self.contaminate(self.pursuers, next_ps, self.dirty)
 
         self.pursuers = next_ps
-        self.dirty = self.contaminate(self.pursuers, next_ps, new_dirty)
-
+        self.dirty = new_dirty
 
     def deep_copy(self):
         """
@@ -363,20 +151,37 @@ class Action:
         self.p_id = p_id
         self.next_node_id = next_node_id
 
-
     def __hash__(self):
         return hash((self.p_id, self.next_node_id))
 
+    def __str__(self):
+        return "Action({}, {})".format(str(self.p_id), str(self.next_node_id))
 
 class Agent:
 
-    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, numTraining = 10):
+    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, num_episode=1000):
         self.alpha = float(alpha)
         self.epsilon = float(epsilon)
         self.discount = float(gamma)
-        self.numTraining = int(numTraining)
         self.q_value = Counter()
+        self.eposodes = 0
+        self.total_training_rewards = 0.0
+        self.num_episode = 1000
 
+    def set_epsilon(self, epsilon):
+        self.epsilon = epsilon
+
+    def start_episode(self):
+        self.last_state = None
+        self.last_action = None
+        self.episode_rewards = 0.0
+
+    def observe_transition(self, state, action, next_state, delta_reward):
+        #self.episode_rewards += delta_reward
+        self.update(state, action, next_state, delta_reward)
+
+    def stop_episode(self):
+        print("stop episode")
 
     def get_qvalue(self, state, action):
 
@@ -432,43 +237,142 @@ class Agent:
 
 
     def update(self, state, action , next_state, reward):
-        self.q_value[(state, action)] = self.q_value[(state, action)] + self.alpha * (
-                reward + self.discount * self.get_value(next_state) - self.get_qvalue(state, action))
+        self.q_value[(state, action)] += self.alpha * (
+            reward + self.discount * self.get_value(next_state) - self.get_qvalue(state, action))
 
     def get_policy(self, state):
         return self.compute_action_from_qvalue(state)
 
     def get_value(self, state):
-        return self.compute_action_from_qvalue(state)
+        return self.compute_value_from_qvalue(state)
 
 class Environment:
-    def __init__(self):
+    def __init__(self, num_p, map_type, k, w):
         # num_p, graph
         # A = State(n, graph)
+        self.num_p = num_p
+        filename = "_{}_k{}_w{}".format(map_type, k, w)
 
-        pass
+        # load graph
+        with open(os.path.join("state", filename+"_state.json"), 'r') as infile:
+            graph = json.load(infile)
+            graph = {int(k):v for k, v in graph.items()}
+
+        with open(os.path.join("mapping", filename+"_mapping_dictionary.json"), 'r') as infile:
+            mapping = json.load(infile)
+            mapping = {int(k):(int(v[0]), int(v[1])) for k, v in mapping.items()}
+
+        State.set_value(num_p, graph)
+        self.display = Display(graph, mapping, map_type, k, w, fix_r=65, fix_c=48, unit=47)
+        self.state = State()
+        self.state_list = []
+
+        # reward setting
+        self.step_limit = 50
+        self.step = 0
 
     def get_current_state(self):
-        pass
+        return self.state
 
     def reset(self):
-        pass
+        self.state = State()
+        self.step = 0
+        self.state_list.clear()
 
     def is_goal(self):
-        pass
+        if self.state.is_goal():
+            return (True, True)
+        if self.step == self.step_limit:
+            return (True, False)
+        return (False, False)
 
     def reward(self):
-        pass
+        # version 1: number of clean region
+        if self.state.is_goal():
+            return 100
+        if self.step == self.step_limit:
+            return -50
+        return sum(1 for d in self.state.dirty if d == 0) - self.step*0.3
+
+    def get_possible_actions(self):
+        return self.state.get_legal_action()
+
+    def display_state(self):
+        print("\rstep={}".format(self.step), end="   ")
+        self.display.draw(self.state, 10)
+
+    def update_state_list(self, state):
+        self.state_list.append(state)
+
+    def do_action(self, action):
+        self.state.do_action(action)
+        self.step += 1
+        return self.state, self.reward()
+
+    def replay(self):
+        for s in self.state_list:
+            self.display.draw(s, 30)
 
     def training(self):
         pass
 
-def training():
-    pass
+def run_episode(env, e, show, agent, discount):
+    returns = 0
+    totalDiscount = 1.0
+    env.reset()
 
+    while True:
+        state = env.get_current_state().deep_copy()
+        env.update_state_list(state)
+
+        if show:
+            env.display_state()
+        
+        # check goal
+        g1, g2 = env.is_goal()
+        if g1:
+            if g2:
+                print("clean!!!!!!!!!")
+                env.replay()
+                quit()
+            return returns
+        
+        # make decision - choose action
+        action = agent.get_action(state) 
+
+        # do action
+        next_state, reward = env.do_action(action)
+
+        # update
+        agent.observe_transition(state, action, next_state, reward)
+
+        returns += reward * totalDiscount
+        totalDiscount *= discount
+        #print(state, reward, next_state, action)
+
+    print("start running")
+
+def training():
+    discount = 0.8
+    num_p = 2
+    map_type = "tree"
+    k = 1
+    w = 1
+    epsilon = 0.3
+    learning_rate = 0.2
+    agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
+    env = Environment(num_p, map_type, k, w)
+    array = Array(100, np.float32)
+    for e in range(1, 1001):
+        returns = run_episode(env, e, e%100==0, agent, discount)
+        array.append(returns)
+        if e % 100 == 0:
+            epsilon *= 0.5
+            agent.set_epsilon(epsilon)
+        print("\r e={}, returns={}".format(e, array.average()), end="       ")
 
 def main():
     pass
 
 if __name__ == "__main__":
-    main()
+    training()
