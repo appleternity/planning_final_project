@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import json
 
 class Counter(dict):
     """
@@ -261,3 +263,24 @@ class Array:
             return self.array[:self.index].tolist()
         else:
             return self.array.tolist()
+
+
+def flipcoin(p):
+    r = random.random()
+    return r < p
+
+def parsing_config():
+    filename = 'config.json'
+    with open(filename, 'r') as infile:
+        d = json.load(infile)
+        d = {
+            k: v
+            for k, v in d.items()
+        }
+        for i in d:
+            d[i] = {k:v for k,v in d[i].items()}
+
+        for i in d:
+            for j in d[i]:
+                d[i][j] = {k:v for k,v in d[i][j].items()}
+    return d

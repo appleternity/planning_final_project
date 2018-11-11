@@ -1,6 +1,6 @@
 from copy import copy, deepcopy
 import random
-from util import Counter, Array
+from util import Counter, Array, flipcoin, parsing_config
 from display import Display
 import os.path
 import json
@@ -180,53 +180,28 @@ class Agent:
         #self.episode_rewards += delta_reward
         self.update(state, action, next_state, delta_reward)
 
-    def stop_episode(self):
-        print("stop episode")
-
+    # TODO: check hash
     def get_qvalue(self, state, action):
-
-        if (state, action) in self.q_value:
-            return self.q_value[(state, action)]
-
-        self.q_value[(state, action)] = 0.0
-        return 0.0
+        return self.q_value[(hash(state), hash(action))]
 
     def compute_value_from_qvalue(self, state):
-
-        if state.get_legal_action():
-            values = Counter()
-            for action in state.get_legal_action():
-                values[action] = self.get_qvalue(state, action)
-
-            return values[values.argMax()]
-
-        return 0.0
-
+        try:
+            return max(self.get_qvalue(state, action) for action in state.get_legal_action())
+        except ValueError:
+            return 0.0
 
     def compute_action_from_qvalue(self, state):
-
-        moves = state.get_legal_action()
-        if moves:
-            values = Counter()
-            for action in moves:
-                values[action] = self.get_qvalue(state, action)
-            return values.argMax()
-
-        return None
-
+        try:
+            return max([
+                (self.get_qvalue(state, action), action)
+                for action in state.get_legal_action()
+            ], key=lambda x:x[0])[1]
+        except ValueError:
+            return None
 
     def get_action(self, state):
-
-        def flipcoin(p):
-            r = random.random()
-            return r < p
-
         legal_actions = state.get_legal_action()
-        action = None
-
-        "*** YOUR CODE HERE ***"
-        if not legal_actions :
-            return action
+        if not legal_actions: return action
 
         if flipcoin(self.epsilon):
             action = random.choice(legal_actions)
@@ -235,10 +210,14 @@ class Agent:
 
         return action
 
-
     def update(self, state, action , next_state, reward):
-        self.q_value[(state, action)] += self.alpha * (
-            reward + self.discount * self.get_value(next_state) - self.get_qvalue(state, action))
+        #self.q_value[(state, action)] += self.alpha * (
+        #    reward + self.discount * self.get_value(next_state) - self.get_qvalue(state, action))
+        next_value = self.get_value(next_state)
+        self.q_value[(hash(state), hash(action))] = sum([
+            (1-self.alpha) * self.get_qvalue(state, action),
+            self.alpha * (reward + self.discount*next_value)
+        ])
 
     def get_policy(self, state):
         return self.compute_action_from_qvalue(state)
@@ -262,13 +241,15 @@ class Environment:
             mapping = json.load(infile)
             mapping = {int(k):(int(v[0]), int(v[1])) for k, v in mapping.items()}
 
+        conf = parsing_config()[map_type]["{},{}".format(k, w)]
         State.set_value(num_p, graph)
-        self.display = Display(graph, mapping, map_type, k, w, fix_r=65, fix_c=48, unit=47)
+        self.display = Display(graph, mapping, map_type, k, w, 
+                fix_r=int(conf["fix_r"]), fix_c=int(conf["fix_c"]), unit=int(conf["unit"]))
         self.state = State()
         self.state_list = []
 
         # reward setting
-        self.step_limit = 50
+        self.step_limit = 150
         self.step = 0
 
     def get_current_state(self):
@@ -334,7 +315,7 @@ def run_episode(env, e, show, agent, discount):
             if g2:
                 print("clean!!!!!!!!!")
                 env.replay()
-                quit()
+                #quit()
             return returns
         
         # make decision - choose action
@@ -358,18 +339,46 @@ def training():
     map_type = "tree"
     k = 1
     w = 1
+    """
+    num_p = 2
+    map_type = "ladder"
+    k = 2
+    w = 1
+    """
+    """
+    num_p = 3
+    map_type = "ladder"
+    k = 3
+    w = 1
+    """
+    """
+    num_p = 3
+    map_type = "ladder"
+    k = 4
+    w = 1
+    """
+    """
+    num_p = 3
+    map_type = "tree"
+    k = 1
+    w = 2
+    """
     epsilon = 0.3
-    learning_rate = 0.2
+    learning_rate = 0.05
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
     env = Environment(num_p, map_type, k, w)
     array = Array(100, np.float32)
-    for e in range(1, 1001):
-        returns = run_episode(env, e, e%100==0, agent, discount)
+    for e in range(1, 20001):
+        returns = run_episode(env, e, e%500==0, agent, discount)
         array.append(returns)
-        if e % 100 == 0:
+        #if e % 50 == 0:
+        if e % 2000 == 0:
             epsilon *= 0.5
             agent.set_epsilon(epsilon)
-        print("\r e={}, returns={}".format(e, array.average()), end="       ")
+            #with open("test.json", 'w', encoding='utf-8') as outfile:
+            #    for k, v in agent.q_value.items():
+            #        outfile.write("{} => {}\n".format(str(k), str(v)))
+        print("\r e={}, epi={:.4f} returns={}, num={}".format(e, epsilon, array.average(), len(agent.q_value)), end="       ")
 
 def main():
     pass
