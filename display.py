@@ -11,7 +11,7 @@ def same_color(p1, p2):
     return True
 
 class Display:
-    def __init__(self, graph, mapping, map_type, k, w, fix_r, fix_c):
+    def __init__(self, graph, mapping, map_type, k, w, fix_r, fix_c, unit=40):
         self.graph = graph # {"0":[1, 9], ...}
         self.mapping = mapping # {"0":("x", "y"), ...}
         
@@ -22,8 +22,7 @@ class Display:
         scale = 2
         self.height = 230*scale
         self.width  = 370*scale
-        self.unit   = 42*scale
-        self.offset = 43*scale
+        self.unit   = unit*scale
 
         create_graph = {
             "tree":self.create_tree,
@@ -63,14 +62,14 @@ class Display:
             cv2.line(img, (x, 0), (x, self.height), (255, 255, 255), w*self.unit)
         return img
 
-    def draw(self, state):
+    def draw(self, state, t=30):
         img = np.copy(self.img)
         for p in state.pursuers:
             x, y = self.mapping[p]
             cv2.circle(img, (y, x), self.unit, p_color, -1)
        
-        cv2.imshow("test", img)
-        cv2.waitKey(0)
+        #cv2.imshow("test", img)
+        #cv2.waitKey(0)
 
         mask = np.zeros((self.height+2, self.width+2), np.uint8)
         for d, n in zip(state.dirty, self.graph):
@@ -81,7 +80,7 @@ class Display:
         
         img[self.mask==0] = (0, 0, 0)
         cv2.imshow("test", img)
-        cv2.waitKey(0)
+        cv2.waitKey(t)
 
 def display_test():
     import json
