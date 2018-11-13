@@ -2,10 +2,15 @@ from copy import copy, deepcopy
 import random
 from util import Counter, Array, flipcoin, parsing_config
 from display import Display
-import os.path
+import os, os.path
 import json
 import numpy as np
+<<<<<<< HEAD
 import datetime
+=======
+import pickle
+from pprint import pprint
+>>>>>>> eb8303bfb435ea8dddeec72271855f5b0a9371f1
 
 d_legel_action = {}
 d_visited = set()
@@ -18,7 +23,6 @@ class State:
         State._N = n
         State._GRAGH = graph
 
-
     def __init__(self, p=None, c=None):
         """
         :param p: tuple of int, position for all pursuer. e.g: (1,1,1,2,3)
@@ -30,6 +34,7 @@ class State:
         self.dirty = (0,) + tuple(1 for _ in range(len(State._GRAGH) - 1)) if c is None else c
 
     def __hash__(self):
+        #return hash((tuple(sorted(self.pursuers)), self.dirty))
         return hash((self.pursuers, self.dirty))
 
     def __str__(self):
@@ -39,7 +44,6 @@ class State:
         """
         return: tuple(new_dirty)
         """
-
         dirty = dirty_old
         new_dirty = list(dirty[:])
         move_pos = None
@@ -97,7 +101,6 @@ class State:
         """
         return [(next_state, action), (next_state, action), ...]
         """
-
         pursuers, dirty = self.pursuers, self.dirty
         next_state = set()
         next_pursuers = set()
@@ -129,27 +132,78 @@ class State:
         """
         return next_state
         """
-
-        # potentially double compute contaminate !!
-
-        # update cur state, contaminate
-        # next_ps = ori [pid]-> next
-        #print(action)
         next_ps = self.pursuers[:action.p_id] + (action.next_node_id,) + self.pursuers[action.p_id + 1:]
-        #new_dirty = self.dirty[:action.p_id] + (0,) + self.dirty[action.p_id + 1:]
         new_dirty = self.contaminate(self.pursuers, next_ps, self.dirty)
 
         self.pursuers = next_ps
         self.dirty = new_dirty
 
     def deep_copy(self):
-        """
-        return a clone of self
-        """
         return State(self.pursuers, self.dirty)
 
-    # def reset(self):
-    #     pass
+    def clear_region(self):
+        return sum(1 for d in self.dirty if d == 0)
+
+class StateOne:
+    _N = None
+    _GRAGH = None
+    
+    @staticmethod
+    def set_value(n, graph):
+        StateOne._N = n
+        StateOne._GRAGH = graph
+    
+    def __init__(self, g=None):
+        self.g = g if g is not None else [StateOne._N if i == 0 else -1 for i, _ in enumerate(StateOne._GRAGH)]
+
+    def __hash__(self):
+        return hash(tuple(self.g))
+
+    def __str__(self):
+        return "StateOne({})".format(str(self.g))
+    
+    def is_goal(self):
+        return sum(1 for g in self.g if g == -1) == 0
+
+    def deep_copy(self):
+        return StateOne(list(self.g))
+
+    def get_legal_action(self): 
+        action_set = set()
+        for i, g in enumerate(self.g):
+            if g >= 1:
+                for p in StateOne._GRAGH[i]:
+                    action_set.add(ActionOne(i, p))
+        return [a for a in action_set]
+
+    def do_action(self, action):
+        if self.g[action.next_node_id] == -1:
+            self.g[action.next_node_id] = 1
+        else:
+            self.g[action.next_node_id] += 1
+        
+        self.g[action.node_id] -= 1 # >= 1
+        if self.g[action.node_id] == 0:
+            # update dirty
+            stack = [action.node_id]
+            visited = set()
+            alive = set()
+            while stack:
+                node = stack.pop()
+                visited.add(node)
+                if any(True if self.g[nei]==-1 else False for nei in StateOne._GRAGH[node]):
+                    self.g[node] = -1
+                    for nei in StateOne._GRAGH[node]:
+                        if self.g[nei]>=1 or nei in visited or nei in alive:
+                            continue
+                        else:
+                            if self.g[nei] == -1:
+                                continue
+                            stack.append(nei)
+                            alive.add(nei)
+
+    def clear_region(self):
+        return sum(1 for i in self.g if i >= 0)
 
 class Action:
     def __init__(self, p_id, next_node_id):
@@ -163,20 +217,30 @@ class Action:
     def __str__(self):
         return "Action({}, {})".format(str(self.p_id), str(self.next_node_id))
 
-class Agent:
+class ActionOne:
+    def __init__(self, node_id, next_node_id):
+        # state[node_id]-1, state[node_id]+1
+        self.node_id = node_id
+        self.next_node_id = next_node_id
 
-    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, num_episode=1000):
+    def __hash__(self):
+        return hash((self.node_id, self.next_node_id))
+
+    def __str__(self):
+        return "ActionOne({}, {})".format(str(self.node_id, self.next_node_id))
+
+class Agent:
+    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, q_value=None):
         self.alpha = float(alpha)
         self.epsilon = float(epsilon)
         self.discount = float(gamma)
-        self.q_value = Counter()
-        self.eposodes = 0
-        self.total_training_rewards = 0.0
-        self.num_episode = 1000
+        self.q_value = Counter() if q_value is None else q_value
+        self.is_testing = False
 
     def set_epsilon(self, epsilon):
         self.epsilon = epsilon
 
+<<<<<<< HEAD
     def set_alpha(self, alpha):
         self.alpha = alpha
 
@@ -185,11 +249,11 @@ class Agent:
         self.last_action = None
         self.episode_rewards = 0.0
 
+=======
+>>>>>>> eb8303bfb435ea8dddeec72271855f5b0a9371f1
     def observe_transition(self, state, action, next_state, delta_reward):
-        #self.episode_rewards += delta_reward
         self.update(state, action, next_state, delta_reward)
 
-    # TODO: check hash
     def get_qvalue(self, state, action):
         return self.q_value[(hash(state), hash(action))]
 
@@ -234,6 +298,26 @@ class Agent:
     def get_value(self, state):
         return self.compute_value_from_qvalue(state)
 
+    def save_model(self, path):
+        with open(path, 'wb') as outfile:
+            pickle.dump({
+                "q_value":self.q_value,
+                "alpha":self.alpha,
+                "epsilon":self.epsilon,
+                "discount":self.discount,
+            }, outfile)
+    
+    @staticmethod
+    def load_model(path):
+        with open(path, 'rb') as infile:
+            data = pickle.load(infile)
+            return Agent(
+                alpha=data["alpha"],
+                epsilon=data["epsilon"],
+                gamma=data["discount"],
+                q_value=data["q_value"]
+            )
+
 class Environment:
     def __init__(self, num_p, map_type, k, w):
         # num_p, graph
@@ -251,15 +335,16 @@ class Environment:
             mapping = {int(k):(int(v[0]), int(v[1])) for k, v in mapping.items()}
 
         conf = parsing_config()[map_type]["{},{}".format(k, w)]
-        State.set_value(num_p, graph)
+        StateOne.set_value(num_p, graph)
         self.display = Display(graph, mapping, map_type, k, w, 
                 fix_r=int(conf["fix_r"]), fix_c=int(conf["fix_c"]), unit=int(conf["unit"]))
-        self.state = State()
+        self.state = StateOne()
         self.state_list = []
 
         # reward setting
-        self.step_limit = 150
+        self.step_limit = 100
         self.step = 0
+        self.prev = 0
 
         self.pre_clear = 0
         self.max_clear = 0
@@ -268,8 +353,9 @@ class Environment:
         return self.state
 
     def reset(self):
-        self.state = State()
+        self.state = StateOne()
         self.step = 0
+        self.prev = 0
         self.state_list.clear()
 
     def is_goal(self):
@@ -282,8 +368,9 @@ class Environment:
     def reward(self):
         # version 1: number of clean region
         if self.state.is_goal():
-            return 100
+            return 150
         if self.step == self.step_limit:
+<<<<<<< HEAD
             return -50
         clear_region = sum(1 for d in self.state.dirty if d == 0)
 
@@ -303,13 +390,24 @@ class Environment:
             print('==========')
             print(self.max_clear)
         return clear_region - self.step*0.3 + expand - penalty*2 + curious
+=======
+            return -150
+        
+        clear_reg = self.state.clear_region()
+        #if clear_reg < self.prev:
+        #    penality = (self.prev - clear_reg) * 3
+        #else:
+        #    penality = 0
+
+        return clear_reg - self.step*0.2 #- penality
+>>>>>>> eb8303bfb435ea8dddeec72271855f5b0a9371f1
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
 
-    def display_state(self):
+    def display_state(self, t=10):
         print("\rstep={}".format(self.step), end="   ")
-        self.display.draw(self.state, 10)
+        self.display.draw(self.state, t)
 
     def update_state_list(self, state):
         self.state_list.append(state)
@@ -320,12 +418,9 @@ class Environment:
         self.step += 1
         return self.state, self.reward()
 
-    def replay(self):
+    def replay(self, t=20):
         for s in self.state_list:
-            self.display.draw(s, 30)
-
-    def training(self):
-        pass
+            self.display.draw(s, t)
 
 def run_episode(env, e, show, agent, discount):
     returns = 0
@@ -337,16 +432,18 @@ def run_episode(env, e, show, agent, discount):
         env.update_state_list(state)
 
         if show:
-            env.display_state()
-        
+            #print(state)
+            env.display_state(20)
+
         # check goal
         g1, g2 = env.is_goal()
         if g1:
             if g2:
-                print("clean!!!!!!!!!")
-                env.replay()
+                return returns, True
+                print("   clean!!!!!!!!!", )
+                #env.replay()
                 #quit()
-            return returns
+            return returns, False
         
         # make decision - choose action
         action = agent.get_action(state) 
@@ -361,14 +458,46 @@ def run_episode(env, e, show, agent, discount):
         totalDiscount *= discount
         #print(state, reward, next_state, action)
 
-    print("start running")
+def test_episode(env, show, agent, discount, t=20):
+    returns = 0
+    totalDiscount = 1.0
+    env.reset()
+
+    while True:
+        state = env.get_current_state().deep_copy()
+        env.update_state_list(state)
+        
+        # check goal
+        g1, g2 = env.is_goal()
+        if g1:
+            if show:
+                env.replay(t)
+            if g2:
+                return returns, True
+                print("clean!!!!!!!!!")
+            return returns, False
+
+        action = agent.get_policy(state)
+        next_state, reward = env.do_action(action)
+        returns += reward * totalDiscount
+        totalDiscount *= discount
 
 def training():
+<<<<<<< HEAD
     discount = 0.75
     num_p = 4
     map_type = "ladder"
     k = 2
     w = 2
+=======
+    discount = 0.8
+    """
+    num_p = 2
+    map_type = "tree"
+    k = 1
+    w = 1
+>>>>>>> eb8303bfb435ea8dddeec72271855f5b0a9371f1
+    """
     """
     num_p = 2
     map_type = "ladder"
@@ -393,6 +522,7 @@ def training():
     k = 1
     w = 2
     """
+<<<<<<< HEAD
     epsilon = 0.6
     learning_rate = 0.1
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
@@ -419,10 +549,60 @@ def training():
             #        outfile.write("{} => {}\n".format(str(k), str(v)))
         if not e%50 :
             print("\r e={}, epi={:.4f} returns={}, num={}".format(e, epsilon, array.average(), len(agent.q_value)), end="       ")
+=======
+    num_p = 4
+    map_type = "ladder"
+    k = 2
+    w = 2
+    epsilon = 0.1
+    learning_rate = 0.05
+    agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
+    env = Environment(num_p, map_type, k, w)
+    array = Array(500, np.float32)
+    model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
+    if not os.path.isdir(model_dir):
+        os.mkdir(model_dir)
 
-def main():
-    pass
+    goal_array = Array(500, np.float32)
+    for e in range(1, 500001):
+        returns, goal = run_episode(env, e, e%2000==0, agent, discount)
+        array.append(returns)
+        goal_array.append(float(goal))
+
+        if e % 10000 == 0:
+            epsilon *= 0.8
+            epsilon = max(0.1, epsilon)
+            agent.set_epsilon(epsilon)
+            agent.save_model(os.path.join(model_dir, "model_e{}.rl".format(e)))
+        
+        if e % 50 == 0:
+            print("\r e={}, epi={:.4f} returns={:.6f}, goal={:6f}, num={}".format(e, agent.epsilon, array.average(), goal_array.average(), len(agent.q_value)), end="       ")
+        
+        if e % 2000 == 0:
+            returns, goal = test_episode(env, True, agent, discount)
+            print()
+            print("testing epoch:{}, returns:{:.6f}".format(e, returns))
+
+def testing():
+    # setting
+    num_p = 3
+    map_type = "tree" #"ladder"/"tree"
+    k = 1
+    w = 2
+    discount = 0.8
+    model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
+    testing_e = 15000
+
+    # load model
+    agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
+    env = Environment(num_p, map_type, k, w)
+>>>>>>> eb8303bfb435ea8dddeec72271855f5b0a9371f1
+
+    for i in range(0, 10):
+        returns = test_episode(env, True, agent, discount, t=50)
+        print("iteration: {}, returns: {}".format(i, returns))
 
 if __name__ == "__main__":
 
     training()
+    #testing()
