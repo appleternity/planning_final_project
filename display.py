@@ -64,9 +64,12 @@ class Display:
 
     def draw(self, state, t=30):
         img = np.copy(self.img)
-        for p in state.pursuers:
+        new_p_color = []
+        for p_idx, p in enumerate (state.pursuers):
             x, y = self.mapping[p]
-            cv2.circle(img, (y, x), self.unit, p_color, -1)
+            new_p_color.append((255-p_idx*12, 255-p_idx*35, p_idx*40))
+            # p_color = (255-p_idx*10, 255, 0)
+            cv2.circle(img, (y, x), self.unit, new_p_color[p_idx], -1)
        
         #cv2.imshow("test", img)
         #cv2.waitKey(0)
@@ -75,7 +78,8 @@ class Display:
         for d, n in zip(state.dirty, self.graph):
             if d is 0: continue
             x, y = self.mapping[n]
-            if same_color(img[x, y], p_color): continue
+
+            if any(same_color(img[x, y], c) for c in new_p_color): continue
             cv2.floodFill(img, mask, (y, x), d_color)
         
         img[self.mask==0] = (0, 0, 0)

@@ -5,7 +5,10 @@ from display import Display
 import os.path
 import json
 import numpy as np
+import datetime
 
+d_legel_action = {}
+d_visited = set()
 class State:
     _N = None
     _GRAGH = None
@@ -46,7 +49,7 @@ class State:
                 new_dirty[p2] = 0
                 new_dirty[p1] = 0
                 break
-        
+
         if move_pos in p_new:
             return dirty
 
@@ -68,7 +71,6 @@ class State:
                         if not dirty[nei]:
                             stack.append(nei)
                         new_dirty[nei] = 1
-
         return tuple(new_dirty)
 
     def get_legal_action(self):
@@ -78,6 +80,8 @@ class State:
         pursuers, dirty = self.pursuers, self.dirty
         #next_pursuers = set()
         action_set = set()
+        if (pursuers, dirty ) in d_legel_action :
+            return d_legel_action[(pursuers, dirty ) ]
 
         for i in range(len(pursuers)):
             for p in State._GRAGH[pursuers[i]]:
@@ -85,7 +89,9 @@ class State:
                 if a not in action_set:
                     action_set.add(a)
 
-        return [i for i in action_set]
+        d_legel_action[(pursuers, dirty )] = [i for i in action_set]
+
+        return d_legel_action[(pursuers, dirty )]
 
     def get_successors(self):
         """
@@ -171,6 +177,9 @@ class Agent:
     def set_epsilon(self, epsilon):
         self.epsilon = epsilon
 
+    def set_alpha(self, alpha):
+        self.alpha = alpha
+
     def start_episode(self):
         self.last_state = None
         self.last_action = None
@@ -252,6 +261,9 @@ class Environment:
         self.step_limit = 150
         self.step = 0
 
+        self.pre_clear = 0
+        self.max_clear = 0
+
     def get_current_state(self):
         return self.state
 
@@ -273,7 +285,24 @@ class Environment:
             return 100
         if self.step == self.step_limit:
             return -50
-        return sum(1 for d in self.state.dirty if d == 0) - self.step*0.3
+        clear_region = sum(1 for d in self.state.dirty if d == 0)
+
+        # version 2: penalty for lose clear region
+        penalty = 0
+        expand = 0
+        curious = 0
+        if self.state not in d_visited:
+            curious+=1
+            d_visited.add(self.state)
+        if clear_region < self.pre_clear:
+            penalty =   self.pre_clear - clear_region
+
+        if clear_region > self.max_clear:
+            expand = 5
+            self.max_clear = clear_region
+            print('==========')
+            print(self.max_clear)
+        return clear_region - self.step*0.3 + expand - penalty*2 + curious
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
@@ -286,6 +315,7 @@ class Environment:
         self.state_list.append(state)
 
     def do_action(self, action):
+        self.pre_clear = sum(1 for d in self.state.dirty if d == 0)
         self.state.do_action(action)
         self.step += 1
         return self.state, self.reward()
@@ -334,11 +364,11 @@ def run_episode(env, e, show, agent, discount):
     print("start running")
 
 def training():
-    discount = 0.8
-    num_p = 2
-    map_type = "tree"
-    k = 1
-    w = 1
+    discount = 0.75
+    num_p = 4
+    map_type = "ladder"
+    k = 2
+    w = 2
     """
     num_p = 2
     map_type = "ladder"
@@ -363,25 +393,36 @@ def training():
     k = 1
     w = 2
     """
-    epsilon = 0.3
-    learning_rate = 0.05
+    epsilon = 0.6
+    learning_rate = 0.1
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
     env = Environment(num_p, map_type, k, w)
     array = Array(100, np.float32)
-    for e in range(1, 20001):
-        returns = run_episode(env, e, e%500==0, agent, discount)
+    t1 = datetime.datetime.now()
+
+    for e in range(1, 200001):
+        returns = run_episode(env, e, e%2000==0, agent, discount)
         array.append(returns)
         #if e % 50 == 0:
-        if e % 2000 == 0:
-            epsilon *= 0.5
-            agent.set_epsilon(epsilon)
+        if e%500 == 0:
+            t2 = datetime.datetime.now()
+            print('time = ',(t2-t1).total_seconds())
+            t1 = t2
+
+        if e % 5000 == 0:
+            epsilon *= 0.8
+            learning_rate *=0.9
+            epsilon = max(0.1, epsilon)
+            agent.set_alpha(max(0.01, learning_rate))
             #with open("test.json", 'w', encoding='utf-8') as outfile:
             #    for k, v in agent.q_value.items():
             #        outfile.write("{} => {}\n".format(str(k), str(v)))
-        print("\r e={}, epi={:.4f} returns={}, num={}".format(e, epsilon, array.average(), len(agent.q_value)), end="       ")
+        if not e%50 :
+            print("\r e={}, epi={:.4f} returns={}, num={}".format(e, epsilon, array.average(), len(agent.q_value)), end="       ")
 
 def main():
     pass
 
 if __name__ == "__main__":
+
     training()
