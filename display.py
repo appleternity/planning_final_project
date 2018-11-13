@@ -3,6 +3,7 @@ import numpy as np
 
 p_color = (255, 255, 0)
 d_color = (100, 100, 100)
+c_color = (255, 255, 255)
 
 def same_color(p1, p2):
     if len(p1) != len(p2): return False
@@ -37,46 +38,50 @@ class Display:
 
     def create_tree(self, k, w, fix_r=20, fix_c=20):
         img = np.zeros((self.height, self.width, 3), np.uint8)
-        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), (255, 255, 255), self.unit)
+        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), d_color, self.unit)
         for i in range(0, k):
             x = int((self.width-k*self.unit*w)/(k+1) * (i+1) + self.unit*i*w + w*self.unit/2)
-            cv2.line(img, (x, 0), (x, self.height), (255, 255, 255), w*self.unit)
+            cv2.line(img, (x, 0), (x, self.height), d_color, w*self.unit)
         return img
 
     def create_ladder(self, k, w, fix_r=20, fix_c=20):
         img = np.zeros((self.height, self.width, 3), np.uint8)
-        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), (255, 255, 255), self.unit)
-        cv2.line(img, (0, int(self.height-self.unit/2)), (self.width, int(self.height-self.unit/2)), (255, 255, 255), self.unit)
+        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), d_color, self.unit)
+        cv2.line(img, (0, int(self.height-self.unit/2)), (self.width, int(self.height-self.unit/2)), d_color, self.unit)
         for i in range(0, k):
             x = int((self.width-k*self.unit*w) / (k-1) * i + self.unit*i*w + w*self.unit/2)
-            cv2.line(img, (x, 0), (x, self.height), (255, 255, 255), w*self.unit)
+            cv2.line(img, (x, 0), (x, self.height), d_color, w*self.unit)
         return img
 
     def create_window(self, k, w, fix_r=20, fix_c=20):
         img = np.zeros((self.height, self.width, 3), np.uint8)
-        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), (255, 255, 255), self.unit)
-        cv2.line(img, (0, int(self.height-self.unit/2)), (self.width, int(self.height-self.unit/2)), (255, 255, 255), self.unit)
-        cv2.line(img, (0, int(self.height/2)), (self.width, int(self.height/2)), (255, 255, 255), self.unit)
+        cv2.line(img, (0, int(self.unit/2)), (self.width, int(self.unit/2)), d_color, self.unit)
+        cv2.line(img, (0, int(self.height-self.unit/2)), (self.width, int(self.height-self.unit/2)), d_color, self.unit)
+        cv2.line(img, (0, int(self.height/2)), (self.width, int(self.height/2)), d_color, self.unit)
         for i in range(0, k):
             x = int((self.width-k*self.unit*w) / (k-1) * i + self.unit*i*w + w*self.unit/2)
-            cv2.line(img, (x, 0), (x, self.height), (255, 255, 255), w*self.unit)
+            cv2.line(img, (x, 0), (x, self.height), d_color, w*self.unit)
         return img
 
     def draw(self, state, t=30):
         img = np.copy(self.img)
-        for p in state.pursuers:
-            x, y = self.mapping[p]
-            cv2.circle(img, (y, x), self.unit, p_color, -1)
+        #pursuers = state.pursuers
        
-        #cv2.imshow("test", img)
-        #cv2.waitKey(0)
-
+        #dirty = state.dirty
+        dirty = state.g
         mask = np.zeros((self.height+2, self.width+2), np.uint8)
-        for d, n in zip(state.dirty, self.graph):
-            if d is 0: continue
+        for d, n in zip(dirty, self.graph):
+            #if d is 1: continue
+            if d is -1: continue
             x, y = self.mapping[n]
             if same_color(img[x, y], p_color): continue
-            cv2.floodFill(img, mask, (y, x), d_color)
+            #cv2.floodFill(img, mask, (y, x), c_color)
+            cv2.circle(img, (y, x), self.unit, c_color, -1)
+        
+        pursuers = [i for i, g in enumerate(state.g) if g >= 1]
+        for p in pursuers:
+            x, y = self.mapping[p]
+            cv2.circle(img, (y, x), self.unit, p_color, -1)
         
         img[self.mask==0] = (0, 0, 0)
         cv2.imshow("test", img)
