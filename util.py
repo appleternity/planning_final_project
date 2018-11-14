@@ -284,3 +284,10 @@ def parsing_config():
             for j in d[i]:
                 d[i][j] = {k:v for k,v in d[i][j].items()}
     return d
+
+def choice_with_distribution(item_list, distribution):
+    d_ac = [np.sum(distribution[:i+1]) for i, d in enumerate(distribution)]
+    num = np.random.random(1)[0]
+    for s, item in zip(d_ac, item_list):
+        if s > num:
+            return item

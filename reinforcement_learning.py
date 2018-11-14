@@ -1,6 +1,6 @@
 from copy import copy, deepcopy
 import random
-from util import Counter, Array, flipcoin, parsing_config
+from util import Counter, Array, flipcoin, parsing_config, choice_with_distribution
 from display import Display
 import os, os.path
 import json
@@ -196,6 +196,15 @@ class StateOne:
     def clear_region(self):
         return sum(1 for i in self.g if i >= 0)
 
+    def boundary_pursuers(self):
+        num = 0
+        for i, p in enumerate(self.g):
+            if p >= 1:
+                nei_state = [self.g[nei] for nei in StateOne._GRAGH[i]]
+                if 0 in nei_state and -1 in nei_state:
+                    num += p
+        return num
+
 class Action:
     def __init__(self, p_id, next_node_id):
         # keep: (p_id, next_node_id)
@@ -227,6 +236,7 @@ class Agent:
         self.discount = float(gamma)
         self.q_value = Counter() if q_value is None else q_value
         self.is_testing = False
+        self.counter = Counter()
 
     def set_epsilon(self, epsilon):
         self.epsilon = epsilon
@@ -257,11 +267,34 @@ class Agent:
         if not legal_actions: return action
 
         if flipcoin(self.epsilon):
-            action = random.choice(legal_actions)
+            action = self.random_action(state, legal_actions)
         else:
             action = self.compute_action_from_qvalue(state)
 
         return action
+
+    def random_action(self, state, legal_actions):
+        
+        # semi-uniform distributed
+        p = np.array([self.get_qvalue(state, a) for a in legal_actions])
+        p = np.exp(p) + 1
+        p = p / np.sum(p)
+        #p = p / np.sum(p)
+        return choice_with_distribution(legal_actions, p)
+        
+        """
+        # counter_based
+        f_a = np.array([self.get_qvalue(state, a) for a in legal_actions])
+        e_c = np.array([1/(self.counter[(hash(state), hash(a))]+1) for a in legal_actions])
+        p = f_a * 0.5 + e_c*10
+        p = p / np.sum(p)
+        select_a = choice_with_distribution(legal_actions, p)
+        self.counter[(hash(state), hash(select_a))] += 1
+        return select_a
+        """
+
+        # pure random
+        return random.choice(legal_actions)
 
     def update(self, state, action , next_state, reward):
         #self.q_value[(state, action)] += self.alpha * (
@@ -344,24 +377,29 @@ class Environment:
 
     def reward(self):
         # version 1: number of clean region
-        if self.state.is_goal():
-            return 150
-        if self.step == self.step_limit:
-            return -150
-        
         clear_reg = self.state.clear_region()
+        
+        if self.state.is_goal():
+            return clear_reg*20
+        if self.step == self.step_limit:
+            # boundary reward
+            b = self.state.boundary_pursuers()
+
+            return -1000+clear_reg*10+b*100
+
         #if clear_reg < self.prev:
         #    penality = (self.prev - clear_reg) * 3
         #else:
         #    penality = 0
 
-        return clear_reg - self.step*0.2 #- penality
+        return clear_reg - self.step*0.3 #- penality
+        #return -self.step*0.3 #- penality
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
 
     def display_state(self, t=10):
-        print("\rstep={}".format(self.step), end="   ")
+        #print("\rstep={}".format(self.step), end="   ")
         self.display.draw(self.state, t)
 
     def update_state_list(self, state):
@@ -377,9 +415,11 @@ class Environment:
             self.display.draw(s, t)
 
 def run_episode(env, e, show, agent, discount):
+    discount = 0.95
     returns = 0
     totalDiscount = 1.0
     env.reset()
+    #reward_list = []
 
     while True:
         state = env.get_current_state().deep_copy()
@@ -404,6 +444,7 @@ def run_episode(env, e, show, agent, discount):
 
         # do action
         next_state, reward = env.do_action(action)
+        #reward_list.append(reward)
 
         # update
         agent.observe_transition(state, action, next_state, reward)
@@ -439,47 +480,22 @@ def test_episode(env, show, agent, discount, t=20):
 def training():
     discount = 0.8
     """
-    num_p = 2
-    map_type = "tree"
-    k = 1
-    w = 1
-    """
+    ladder_k2_w2 => step_limit 120, epsilon 0.3
     """
     num_p = 2
     map_type = "ladder"
     k = 2
     w = 1
-    """
-    """
-    num_p = 3
-    map_type = "ladder"
-    k = 3
-    w = 1
-    """
-    """
-    num_p = 3
-    map_type = "ladder"
-    k = 4
-    w = 1
-    """
-    """
-    num_p = 3
-    map_type = "tree"
-    k = 1
-    w = 2
-    """
-    num_p = 4
-    map_type = "ladder"
-    k = 2
-    w = 2
-    epsilon = 0.1
-    learning_rate = 0.05
+    epsilon = 0.3
+    learning_rate = 0.01
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
     env = Environment(num_p, map_type, k, w)
     array = Array(500, np.float32)
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
+    log_filename = os.path.join("log", "{}_k{}_w{}".format(map_type, k, w))
+    log_file = open(log_filename, 'w', encoding='utf-8')
 
     goal_array = Array(500, np.float32)
     for e in range(1, 500001):
@@ -489,13 +505,15 @@ def training():
 
         if e % 10000 == 0:
             epsilon *= 0.8
-            epsilon = max(0.1, epsilon)
+            epsilon = max(0.3, epsilon)
             agent.set_epsilon(epsilon)
             agent.save_model(os.path.join(model_dir, "model_e{}.rl".format(e)))
         
         if e % 50 == 0:
             print("\r e={}, epi={:.4f} returns={:.6f}, goal={:6f}, num={}".format(e, agent.epsilon, array.average(), goal_array.average(), len(agent.q_value)), end="       ")
-        
+            log_file.write(json.dumps({"e":e, "epi":agent.epsilon, "returns":float(array.average()), "goal":float(goal_array.average()), "num_state":len(agent.q_value)})+"\n") 
+            log_file.flush()
+
         if e % 2000 == 0:
             returns, goal = test_episode(env, True, agent, discount)
             print()
@@ -503,20 +521,20 @@ def training():
 
 def testing():
     # setting
-    num_p = 3
-    map_type = "tree" #"ladder"/"tree"
-    k = 1
+    num_p = 4
+    map_type = "ladder" #"ladder"/"tree"
+    k = 2
     w = 2
     discount = 0.8
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
-    testing_e = 15000
+    testing_e = 30000
 
     # load model
     agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
     env = Environment(num_p, map_type, k, w)
 
     for i in range(0, 10):
-        returns = test_episode(env, True, agent, discount, t=50)
+        returns = test_episode(env, True, agent, discount, t=40)
         print("iteration: {}, returns: {}".format(i, returns))
 
 if __name__ == "__main__":
