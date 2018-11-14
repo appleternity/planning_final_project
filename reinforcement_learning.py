@@ -1,12 +1,15 @@
 from copy import copy, deepcopy
 import random
-from util import Counter, Array, flipcoin, parsing_config
+from util import Counter, Array, flipcoin, parsing_config, choice_with_distribution
 from display import Display
 import os, os.path
 import json
 import numpy as np
 import pickle
+import datetime
 from pprint import pprint
+
+d_legel_action = {}
 
 class State:
     _N = None
@@ -79,6 +82,8 @@ class State:
         pursuers, dirty = self.pursuers, self.dirty
         #next_pursuers = set()
         action_set = set()
+        if (pursuers, dirty ) in d_legel_action :
+            return d_legel_action[(pursuers, dirty ) ]
 
         for i in range(len(pursuers)):
             for p in State._GRAGH[pursuers[i]]:
@@ -86,8 +91,9 @@ class State:
                 if a not in action_set:
                     action_set.add(a)
 
-        return [i for i in action_set]
+        d_legel_action[(pursuers, dirty )] = [i for i in action_set]
 
+        return d_legel_action[(pursuers, dirty )]
     def get_successors(self):
         """
         return [(next_state, action), (next_state, action), ...]
@@ -257,11 +263,20 @@ class Agent:
         if not legal_actions: return action
 
         if flipcoin(self.epsilon):
-            action = random.choice(legal_actions)
+            # action = random.choice(legal_actions)
+            action = self.random_action(state, legal_actions)
         else:
             action = self.compute_action_from_qvalue(state)
 
         return action
+
+    def random_action(self, state,legal_actions):
+        # semi-uniform distributed
+        p = np.array([self.get_qvalue(state, a) for a in legal_actions])
+        p = np.exp(p)+0.1
+        p = p/np.sum(p)
+        return choice_with_distribution(legal_actions, p)
+
 
     def update(self, state, action , next_state, reward):
         #self.q_value[(state, action)] += self.alpha * (
@@ -325,6 +340,7 @@ class Environment:
         self.step_limit = 100
         self.step = 0
         self.prev = 0
+        self.max_clear = 0
 
     def get_current_state(self):
         return self.state
@@ -344,18 +360,19 @@ class Environment:
 
     def reward(self):
         # version 1: number of clean region
-        if self.state.is_goal():
-            return 150
-        if self.step == self.step_limit:
-            return -150
-
         clear_reg = self.state.clear_region()
-        #if clear_reg < self.prev:
+        if self.state.is_goal():
+            return clear_reg*5
+        if self.step == self.step_limit:
+            return -300+clear_reg*2
+
+
+        # if clear_reg < self.prev:
         #    penality = (self.prev - clear_reg) * 3
-        #else:
+        # else:
         #    penality = 0
 
-        return clear_reg - self.step*0.2 #- penality
+        return clear_reg - self.step*0.3 # + expand #  - penality
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
@@ -393,8 +410,9 @@ def run_episode(env, e, show, agent, discount):
         g1, g2 = env.is_goal()
         if g1:
             if g2:
-                return returns, True
                 print("   clean!!!!!!!!!", )
+                return returns, True
+                # print("   clean!!!!!!!!!", )
                 #env.replay()
                 #quit()
             return returns, False
@@ -427,8 +445,9 @@ def test_episode(env, show, agent, discount, t=20):
             if show:
                 env.replay(t)
             if g2:
-                return returns, True
                 print("clean!!!!!!!!!")
+                return returns, True
+                # print("clean!!!!!!!!!")
             return returns, False
 
         action = agent.get_policy(state)
@@ -469,15 +488,16 @@ def training():
     w = 2
     """
     num_p = 4
-    map_type = "ladder"
+    map_type = "tree"
     k = 2
     w = 2
-    epsilon = 0.1
+    epsilon = 0.3
     learning_rate = 0.05
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
     env = Environment(num_p, map_type, k, w)
     array = Array(500, np.float32)
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
+    t1 = datetime.datetime.now()
     if not os.path.isdir(model_dir):
         os.mkdir(model_dir)
 
@@ -486,6 +506,10 @@ def training():
         returns, goal = run_episode(env, e, e%2000==0, agent, discount)
         array.append(returns)
         goal_array.append(float(goal))
+        if e%500 == 0:
+            t2 = datetime.datetime.now()
+            print('time = ', (t2 - t1).total_seconds())
+            t1 = t2
 
         if e % 10000 == 0:
             epsilon *= 0.8

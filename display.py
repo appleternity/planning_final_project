@@ -83,9 +83,11 @@ class Display:
             cv2.circle(img, (y, x), self.unit, c_color, -1)
 
         pursuers = [i for i, g in enumerate(state.g) if g >= 1]
-        for p in pursuers:
+        new_p_color = []
+        for p_idx, p in enumerate(pursuers):
             x, y = self.mapping[p]
-            cv2.circle(img, (y, x), self.unit, p_color, -1)
+            new_p_color.append((255 - p_idx * 12, 255 - p_idx * 35, p_idx * 40))
+            cv2.circle(img, (y, x), self.unit, new_p_color[p_idx], -1)
 
         img[self.mask == 0] = (0, 0, 0)
         cv2.imshow("test", img)
