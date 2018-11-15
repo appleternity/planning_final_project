@@ -501,9 +501,9 @@ def training():
     """
     ladder_k2_w2 => step_limit 120, epsilon 0.3
     """
-    num_p = 2
+    num_p = 3
     map_type = "ladder"
-    k = 2
+    k = 4
     w = 1
     epsilon = 0.3
     learning_rate = 0.01
@@ -521,18 +521,24 @@ def training():
         returns, goal = run_episode(env, e, e%2000==0, agent, discount)
         array.append(returns)
         goal_array.append(float(goal))
-
+        
+        # epsilon decay
         if e % 10000 == 0:
             epsilon *= 0.8
             epsilon = max(0.3, epsilon)
             agent.set_epsilon(epsilon)
+
+        # save model
+        if e % 5000 == 0:
             agent.save_model(os.path.join(model_dir, "model_e{}.rl".format(e)))
         
+        # print information
         if e % 50 == 0:
             print("\r e={}, epi={:.4f} returns={:.6f}, goal={:6f}, num={}".format(e, agent.epsilon, array.average(), goal_array.average(), len(agent.q_value)), end="       ")
             log_file.write(json.dumps({"e":e, "epi":agent.epsilon, "returns":float(array.average()), "goal":float(goal_array.average()), "num_state":len(agent.q_value)})+"\n") 
             log_file.flush()
 
+        # run testing
         if e % 2000 == 0:
             returns, goal = test_episode(env, True, agent, discount)
             print()
@@ -542,11 +548,11 @@ def testing():
     # setting
     num_p = 3
     map_type = "ladder" #"ladder"/"tree"
-    k = 3
+    k = 4
     w = 1
     discount = 0.8
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
-    testing_e = 10000
+    testing_e = 20000
 
     # load model
     agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
