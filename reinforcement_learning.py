@@ -144,8 +144,11 @@ class StateOne:
         StateOne._N = n
         StateOne._GRAGH = graph
     
-    def __init__(self, g=None):
+    def __init__(self, g=None, keep=None, p=None):
         self.g = g if g is not None else [StateOne._N if i == 0 else -1 for i, _ in enumerate(StateOne._GRAGH)]
+        self.keep = keep
+        if self.keep:
+            self.pursuers = tuple(0 for _ in range(StateOne._N)) if p is None else p
 
     def __hash__(self):
         return hash(tuple(self.g))
@@ -157,7 +160,11 @@ class StateOne:
         return sum(1 for g in self.g if g == -1) == 0
 
     def deep_copy(self):
-        return StateOne(list(self.g))
+        if self.keep:
+            return StateOne(list(self.g), keep=True, p=self.pursuers)
+        else:
+            return StateOne(list(self.g))
+
 
     def get_legal_action(self): 
         action_set = set()
@@ -172,6 +179,11 @@ class StateOne:
             self.g[action.next_node_id] = 1
         else:
             self.g[action.next_node_id] += 1
+
+        if self.keep:
+            ps = list(self.pursuers)
+            ps[ps.index(action.node_id)] = action.next_node_id
+            self.pursuers = tuple(ps)
         
         self.g[action.node_id] -= 1 # >= 1
         if self.g[action.node_id] == 0:
@@ -332,7 +344,7 @@ class Agent:
             )
 
 class Environment:
-    def __init__(self, num_p, map_type, k, w):
+    def __init__(self, num_p, map_type, k, w, keep_pursuer=False):
         # num_p, graph
         # A = State(n, graph)
         self.num_p = num_p
@@ -351,8 +363,9 @@ class Environment:
         StateOne.set_value(num_p, graph)
         self.display = Display(graph, mapping, map_type, k, w, 
                 fix_r=int(conf["fix_r"]), fix_c=int(conf["fix_c"]), unit=int(conf["unit"]))
-        self.state = StateOne()
+        self.state = StateOne(keep=keep_pursuer)
         self.state_list = []
+        self.keep_pursuer = keep_pursuer
 
         # reward setting
         self.step_limit = 100
@@ -363,7 +376,7 @@ class Environment:
         return self.state
 
     def reset(self):
-        self.state = StateOne()
+        self.state = StateOne(keep=self.keep_pursuer)
         self.step = 0
         self.prev = 0
         self.state_list.clear()
@@ -376,24 +389,30 @@ class Environment:
         return (False, False)
 
     def reward(self):
-        # version 1: number of clean region
+        # version 1: dynamic reward + boundary (best)
         clear_reg = self.state.clear_region()
-        
         if self.state.is_goal():
             return clear_reg*20
         if self.step == self.step_limit:
-            # boundary reward
             b = self.state.boundary_pursuers()
-
             return -1000+clear_reg*10+b*100
+        return clear_reg - self.step*0.3
 
-        #if clear_reg < self.prev:
-        #    penality = (self.prev - clear_reg) * 3
-        #else:
-        #    penality = 0
-
-        return clear_reg - self.step*0.3 #- penality
-        #return -self.step*0.3 #- penality
+        # version 2: dynamic reward 
+        clear_reg = self.state.clear_region()
+        if self.state.is_goal():
+            return clear_reg*20
+        if self.step == self.step_limit:
+            return -1000+clear_reg*10
+        return clear_reg - self.step*0.3
+        
+        # version 3: fix reward
+        clear_reg = self.state.clear_region()
+        if self.state.is_goal():
+            return 150
+        if self.step == self.step_limit:
+            return -150
+        return clear_reg - self.step*0.3
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
@@ -521,22 +540,22 @@ def training():
 
 def testing():
     # setting
-    num_p = 4
+    num_p = 3
     map_type = "ladder" #"ladder"/"tree"
-    k = 2
-    w = 2
+    k = 3
+    w = 1
     discount = 0.8
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
-    testing_e = 30000
+    testing_e = 10000
 
     # load model
     agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
-    env = Environment(num_p, map_type, k, w)
+    env = Environment(num_p, map_type, k, w, keep_pursuer=True)
 
     for i in range(0, 10):
         returns = test_episode(env, True, agent, discount, t=40)
         print("iteration: {}, returns: {}".format(i, returns))
 
 if __name__ == "__main__":
-    training()
-    #testing()
+    #training()
+    testing()

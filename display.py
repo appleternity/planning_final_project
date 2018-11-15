@@ -78,10 +78,17 @@ class Display:
             #cv2.floodFill(img, mask, (y, x), c_color)
             cv2.circle(img, (y, x), self.unit, c_color, -1)
         
-        pursuers = [i for i, g in enumerate(state.g) if g >= 1]
-        for p in pursuers:
+        if state.keep:
+            pursuers = state.pursuers
+        else:
+            pursuers = [i for i, g in enumerate(state.g) if g >= 1]
+        for p_idx, p in enumerate(pursuers):
             x, y = self.mapping[p]
-            cv2.circle(img, (y, x), self.unit, p_color, -1)
+            if state.keep:
+                color = (255 - p_idx * 12, 255 - p_idx * 35, p_idx * 40)
+                cv2.circle(img, (y, x), self.unit, color, -1)
+            else:
+                cv2.circle(img, (y, x), self.unit, p_color, -1)
         
         img[self.mask==0] = (0, 0, 0)
         cv2.imshow("test", img)
