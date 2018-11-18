@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 from pprint import pprint
 
+
 class State:
     _N = None
     _GRAGH = None
@@ -24,11 +25,11 @@ class State:
         """
         # keep: pursuer position, contaminated region
 
-        self.pursuers =  tuple(0 for _ in range(State._N)) if p is None else p
+        self.pursuers = tuple(0 for _ in range(State._N)) if p is None else p
         self.dirty = (0,) + tuple(1 for _ in range(len(State._GRAGH) - 1)) if c is None else c
 
     def __hash__(self):
-        #return hash((tuple(sorted(self.pursuers)), self.dirty))
+        # return hash((tuple(sorted(self.pursuers)), self.dirty))
         return hash((self.pursuers, self.dirty))
 
     def __str__(self):
@@ -47,7 +48,7 @@ class State:
                 new_dirty[p2] = 0
                 new_dirty[p1] = 0
                 break
-        
+
         if move_pos in p_new:
             return dirty
 
@@ -77,7 +78,7 @@ class State:
         return [action,action, ... ...]
         """
         pursuers, dirty = self.pursuers, self.dirty
-        #next_pursuers = set()
+        # next_pursuers = set()
         action_set = set()
 
         for i in range(len(pursuers)):
@@ -111,7 +112,7 @@ class State:
                         new_dirty = self.contaminate(origin_p, next_ps, new_dirty)
                     new_state = State(next_ps, new_dirty)
 
-                    next_state.add( (new_state, action) )
+                    next_state.add((new_state, action))
 
         return [i for i in next_state]
 
@@ -135,15 +136,16 @@ class State:
     def clear_region(self):
         return sum(1 for d in self.dirty if d == 0)
 
+
 class StateOne:
     _N = None
     _GRAGH = None
-    
+
     @staticmethod
     def set_value(n, graph):
         StateOne._N = n
         StateOne._GRAGH = graph
-    
+
     def __init__(self, g=None, keep=None, p=None):
         self.g = g if g is not None else [StateOne._N if i == 0 else -1 for i, _ in enumerate(StateOne._GRAGH)]
         self.keep = keep
@@ -155,7 +157,7 @@ class StateOne:
 
     def __str__(self):
         return "StateOne({})".format(str(self.g))
-    
+
     def is_goal(self):
         return sum(1 for g in self.g if g == -1) == 0
 
@@ -165,8 +167,7 @@ class StateOne:
         else:
             return StateOne(list(self.g))
 
-
-    def get_legal_action(self): 
+    def get_legal_action(self):
         action_set = set()
         for i, g in enumerate(self.g):
             if g >= 1:
@@ -184,8 +185,8 @@ class StateOne:
             ps = list(self.pursuers)
             ps[ps.index(action.node_id)] = action.next_node_id
             self.pursuers = tuple(ps)
-        
-        self.g[action.node_id] -= 1 # >= 1
+
+        self.g[action.node_id] -= 1  # >= 1
         if self.g[action.node_id] == 0:
             # update dirty
             stack = [action.node_id]
@@ -194,10 +195,10 @@ class StateOne:
             while stack:
                 node = stack.pop()
                 visited.add(node)
-                if any(True if self.g[nei]==-1 else False for nei in StateOne._GRAGH[node]):
+                if any(True if self.g[nei] == -1 else False for nei in StateOne._GRAGH[node]):
                     self.g[node] = -1
                     for nei in StateOne._GRAGH[node]:
-                        if self.g[nei]>=1 or nei in visited or nei in alive:
+                        if self.g[nei] >= 1 or nei in visited or nei in alive:
                             continue
                         else:
                             if self.g[nei] == -1:
@@ -217,6 +218,7 @@ class StateOne:
                     num += p
         return num
 
+
 class Action:
     def __init__(self, p_id, next_node_id):
         # keep: (p_id, next_node_id)
@@ -229,6 +231,7 @@ class Action:
     def __str__(self):
         return "Action({}, {})".format(str(self.p_id), str(self.next_node_id))
 
+
 class ActionOne:
     def __init__(self, node_id, next_node_id):
         # state[node_id]-1, state[node_id]+1
@@ -240,6 +243,7 @@ class ActionOne:
 
     def __str__(self):
         return "ActionOne({}, {})".format(str(self.node_id, self.next_node_id))
+
 
 class Agent:
     def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, q_value=None):
@@ -270,7 +274,7 @@ class Agent:
             return max([
                 (self.get_qvalue(state, action), action)
                 for action in state.get_legal_action()
-            ], key=lambda x:x[0])[1]
+            ], key=lambda x: x[0])[1]
         except ValueError:
             return None
 
@@ -286,15 +290,14 @@ class Agent:
         return action
 
     def random_action(self, state, legal_actions):
-        
+
         # semi-uniform distributed
         p = np.array([self.get_qvalue(state, a) for a in legal_actions])
         p = np.exp(p) + 1
         p = p / np.sum(p)
-        #p = p / np.sum(p)
+        # p = p / np.sum(p)
         return choice_with_distribution(legal_actions, p)
-        
-        """
+
         # counter_based
         f_a = np.array([self.get_qvalue(state, a) for a in legal_actions])
         e_c = np.array([1/(self.counter[(hash(state), hash(a))]+1) for a in legal_actions])
@@ -303,18 +306,17 @@ class Agent:
         select_a = choice_with_distribution(legal_actions, p)
         self.counter[(hash(state), hash(select_a))] += 1
         return select_a
-        """
 
         # pure random
         return random.choice(legal_actions)
 
-    def update(self, state, action , next_state, reward):
-        #self.q_value[(state, action)] += self.alpha * (
+    def update(self, state, action, next_state, reward):
+        # self.q_value[(state, action)] += self.alpha * (
         #    reward + self.discount * self.get_value(next_state) - self.get_qvalue(state, action))
         next_value = self.get_value(next_state)
         self.q_value[(hash(state), hash(action))] = sum([
-            (1-self.alpha) * self.get_qvalue(state, action),
-            self.alpha * (reward + self.discount*next_value)
+            (1 - self.alpha) * self.get_qvalue(state, action),
+            self.alpha * (reward + self.discount * next_value)
         ])
 
     def get_policy(self, state):
@@ -326,12 +328,12 @@ class Agent:
     def save_model(self, path):
         with open(path, 'wb') as outfile:
             pickle.dump({
-                "q_value":self.q_value,
-                "alpha":self.alpha,
-                "epsilon":self.epsilon,
-                "discount":self.discount,
+                "q_value": self.q_value,
+                "alpha": self.alpha,
+                "epsilon": self.epsilon,
+                "discount": self.discount,
             }, outfile)
-    
+
     @staticmethod
     def load_model(path):
         with open(path, 'rb') as infile:
@@ -343,6 +345,7 @@ class Agent:
                 q_value=data["q_value"]
             )
 
+
 class Environment:
     def __init__(self, num_p, map_type, k, w, keep_pursuer=False):
         # num_p, graph
@@ -351,18 +354,18 @@ class Environment:
         filename = "_{}_k{}_w{}".format(map_type, k, w)
 
         # load graph
-        with open(os.path.join("state", filename+"_state.json"), 'r') as infile:
+        with open(os.path.join("state", filename + "_state.json"), 'r') as infile:
             graph = json.load(infile)
-            graph = {int(k):v for k, v in graph.items()}
+            graph = {int(k): v for k, v in graph.items()}
 
-        with open(os.path.join("mapping", filename+"_mapping_dictionary.json"), 'r') as infile:
+        with open(os.path.join("mapping", filename + "_mapping_dictionary.json"), 'r') as infile:
             mapping = json.load(infile)
-            mapping = {int(k):(int(v[0]), int(v[1])) for k, v in mapping.items()}
+            mapping = {int(k): (int(v[0]), int(v[1])) for k, v in mapping.items()}
 
         conf = parsing_config()[map_type]["{},{}".format(k, w)]
         StateOne.set_value(num_p, graph)
-        self.display = Display(graph, mapping, map_type, k, w, 
-                fix_r=int(conf["fix_r"]), fix_c=int(conf["fix_c"]), unit=int(conf["unit"]))
+        self.display = Display(graph, mapping, map_type, k, w,
+                               fix_r=int(conf["fix_r"]), fix_c=int(conf["fix_c"]), unit=int(conf["unit"]))
         self.state = StateOne(keep=keep_pursuer)
         self.state_list = []
         self.keep_pursuer = keep_pursuer
@@ -389,36 +392,36 @@ class Environment:
         return (False, False)
 
     def reward(self):
-        # version 1: dynamic reward + boundary (best)
-        clear_reg = self.state.clear_region()
-        if self.state.is_goal():
-            return clear_reg*20
-        if self.step == self.step_limit:
-            b = self.state.boundary_pursuers()
-            return -1000+clear_reg*10+b*100
-        return clear_reg - self.step*0.3
+        # # version 1: dynamic reward + boundary (best)
+        # clear_reg = self.state.clear_region()
+        # if self.state.is_goal():
+        #     return clear_reg * 20
+        # if self.step == self.step_limit:
+        #     b = self.state.boundary_pursuers()
+        #     return -1000 + clear_reg * 10 + b * 100
+        # return clear_reg - self.step * 0.3
 
-        # version 2: dynamic reward 
-        clear_reg = self.state.clear_region()
-        if self.state.is_goal():
-            return clear_reg*20
-        if self.step == self.step_limit:
-            return -1000+clear_reg*10
-        return clear_reg - self.step*0.3
-        
+        # # version 2: dynamic reward
+        # clear_reg = self.state.clear_region()
+        # if self.state.is_goal():
+        #     return clear_reg * 20
+        # if self.step == self.step_limit:
+        #     return -1000 + clear_reg * 10
+        # return clear_reg - self.step * 0.3
+
         # version 3: fix reward
         clear_reg = self.state.clear_region()
         if self.state.is_goal():
             return 150
         if self.step == self.step_limit:
             return -150
-        return clear_reg - self.step*0.3
+        return clear_reg - self.step * 0.3
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
 
     def display_state(self, t=10):
-        #print("\rstep={}".format(self.step), end="   ")
+        # print("\rstep={}".format(self.step), end="   ")
         self.display.draw(self.state, t)
 
     def update_state_list(self, state):
@@ -433,19 +436,20 @@ class Environment:
         for s in self.state_list:
             self.display.draw(s, t)
 
+
 def run_episode(env, e, show, agent, discount):
     discount = 0.95
     returns = 0
     totalDiscount = 1.0
     env.reset()
-    #reward_list = []
+    # reward_list = []
 
     while True:
         state = env.get_current_state().deep_copy()
         env.update_state_list(state)
 
         if show:
-            #print(state)
+            # print(state)
             env.display_state(20)
 
         # check goal
@@ -454,23 +458,24 @@ def run_episode(env, e, show, agent, discount):
             if g2:
                 return returns, True
                 print("   clean!!!!!!!!!", )
-                #env.replay()
-                #quit()
+                # env.replay()
+                # quit()
             return returns, False
-        
+
         # make decision - choose action
-        action = agent.get_action(state) 
+        action = agent.get_action(state)
 
         # do action
         next_state, reward = env.do_action(action)
-        #reward_list.append(reward)
+        # reward_list.append(reward)
 
         # update
         agent.observe_transition(state, action, next_state, reward)
 
         returns += reward * totalDiscount
         totalDiscount *= discount
-        #print(state, reward, next_state, action)
+        # print(state, reward, next_state, action)
+
 
 def test_episode(env, show, agent, discount, t=20):
     returns = 0
@@ -480,7 +485,7 @@ def test_episode(env, show, agent, discount, t=20):
     while True:
         state = env.get_current_state().deep_copy()
         env.update_state_list(state)
-        
+
         # check goal
         g1, g2 = env.is_goal()
         if g1:
@@ -496,15 +501,28 @@ def test_episode(env, show, agent, discount, t=20):
         returns += reward * totalDiscount
         totalDiscount *= discount
 
+
 def training():
+    """
+    ladder_k2_w1: N:2
+    ladder_k2_w2: N:4
+    ladder_k3_w1: N:3
+    ladder_k4_w1: N:3
+
+    tree_k1_w1: N:2
+    tree_k1_w2: N:3
+    tree_k2_w1: N:2
+    tree_k2_w2: N:3
+    tree_k3_w1: N:2
+    tree_k3_w2: N:4
+    tree_k4_w1: N:2
+    """
+
     discount = 0.8
-    """
-    ladder_k2_w2 => step_limit 120, epsilon 0.3
-    """
-    num_p = 3
+    num_p = 4
     map_type = "ladder"
-    k = 4
-    w = 1
+    k = 2
+    w = 2
     epsilon = 0.3
     learning_rate = 0.01
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
@@ -518,10 +536,10 @@ def training():
 
     goal_array = Array(500, np.float32)
     for e in range(1, 500001):
-        returns, goal = run_episode(env, e, e%2000==0, agent, discount)
+        returns, goal = run_episode(env, e, e % 2000 == 0, agent, discount)
         array.append(returns)
         goal_array.append(float(goal))
-        
+
         # epsilon decay
         if e % 10000 == 0:
             epsilon *= 0.8
@@ -531,11 +549,15 @@ def training():
         # save model
         if e % 5000 == 0:
             agent.save_model(os.path.join(model_dir, "model_e{}.rl".format(e)))
-        
+
         # print information
         if e % 50 == 0:
-            print("\r e={}, epi={:.4f} returns={:.6f}, goal={:6f}, num={}".format(e, agent.epsilon, array.average(), goal_array.average(), len(agent.q_value)), end="       ")
-            log_file.write(json.dumps({"e":e, "epi":agent.epsilon, "returns":float(array.average()), "goal":float(goal_array.average()), "num_state":len(agent.q_value)})+"\n") 
+            print("\r e={}, epi={:.4f} returns={:.6f}, goal={:6f}, num={}".format(e, agent.epsilon, array.average(),
+                                                                                  goal_array.average(),
+                                                                                  len(agent.q_value)), end="       ")
+            log_file.write(json.dumps(
+                {"e": e, "epi": agent.epsilon, "returns": float(array.average()), "goal": float(goal_array.average()),
+                 "num_state": len(agent.q_value)}) + "\n")
             log_file.flush()
 
         # run testing
@@ -544,15 +566,16 @@ def training():
             print()
             print("testing epoch:{}, returns:{:.6f}".format(e, returns))
 
+
 def testing():
     # setting
     num_p = 3
-    map_type = "ladder" #"ladder"/"tree"
+    map_type = "ladder"  # "ladder"/"tree"
     k = 4
     w = 1
     discount = 0.8
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
-    testing_e = 20000
+    testing_e = 10000
 
     # load model
     agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
@@ -562,6 +585,8 @@ def testing():
         returns = test_episode(env, True, agent, discount, t=40)
         print("iteration: {}, returns: {}".format(i, returns))
 
+
 if __name__ == "__main__":
-    #training()
-    testing()
+
+    training()
+    # testing()
