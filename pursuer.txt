@@ -1,0 +1,11 @@
+ladder_k2_w1: N:2
+ladder_k2_w2: N:4
+ladder_k3_w1: N:3
+ladder_k4_w1: N:3
+tree_k1_w1: N:2
+tree_k1_w2: N:3
+tree_k2_w1: N:2
+tree_k2_w2: N:3
+tree_k3_w1: N:2
+tree_k3_w2: N:4
+tree_k4_w1: N:2
