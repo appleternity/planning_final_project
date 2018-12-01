@@ -7,6 +7,9 @@ import json
 import numpy as np
 import pickle
 from pprint import pprint
+#from brute_force import create_window_graph
+import imageio
+from argparse import ArgumentParser
 
 class State:
     _N = None
@@ -217,6 +220,43 @@ class StateOne:
                     num += p
         return num
 
+    def distance_boundary_pursuers(self):
+        pur = []
+        border = [0] * len(self.g)
+        b_exist = False
+        for idx, g in enumerate(self.g):
+            if g >= 1:
+                for i in range(g):
+                    pur.append((idx, 0))
+
+                nei_state = [self.g[nei] for nei in StateOne._GRAGH[idx]]
+                if 0 in nei_state and -1 in nei_state:
+                    border[idx] = 1
+                    b_exist = True
+                else:
+                    border[idx] = 0
+
+        total_dis = 0
+        if b_exist:
+            for p in pur:
+                if border[p[0]] == 1:
+                    continue
+                stack = [p]
+                visited = set()
+                while stack:
+                    (node,dis) = stack.pop(0)
+                    if border[node]:
+                        total_dis+= dis
+                        break
+                    for nei in StateOne._GRAGH[node]:
+                        if  nei in visited:
+                            continue
+                        else:
+                            visited.add(nei)
+                            stack.append((nei,dis+1))
+
+        return total_dis
+
 class Action:
     def __init__(self, p_id, next_node_id):
         # keep: (p_id, next_node_id)
@@ -294,7 +334,6 @@ class Agent:
         #p = p / np.sum(p)
         return choice_with_distribution(legal_actions, p)
         
-        """
         # counter_based
         f_a = np.array([self.get_qvalue(state, a) for a in legal_actions])
         e_c = np.array([1/(self.counter[(hash(state), hash(a))]+1) for a in legal_actions])
@@ -303,7 +342,6 @@ class Agent:
         select_a = choice_with_distribution(legal_actions, p)
         self.counter[(hash(state), hash(select_a))] += 1
         return select_a
-        """
 
         # pure random
         return random.choice(legal_actions)
@@ -354,7 +392,6 @@ class Environment:
         with open(os.path.join("state", filename+"_state.json"), 'r') as infile:
             graph = json.load(infile)
             graph = {int(k):v for k, v in graph.items()}
-
         with open(os.path.join("mapping", filename+"_mapping_dictionary.json"), 'r') as infile:
             mapping = json.load(infile)
             mapping = {int(k):(int(v[0]), int(v[1])) for k, v in mapping.items()}
@@ -389,13 +426,25 @@ class Environment:
         return (False, False)
 
     def reward(self):
+        # version testing: dynamic reward + boundary (best)
+        """
+        clear_reg = self.state.clear_region()
+        if self.state.is_goal():
+            return clear_reg*20
+        if self.step == self.step_limit:
+            b = self.state.boundary_pursuers()
+            bd = self.state.distance_boundary_pursuers()
+            return -1000+clear_reg*10+b*100-bd*5
+        return clear_reg - self.step*0.3
+        """
+        
         # version 1: dynamic reward + boundary (best)
         clear_reg = self.state.clear_region()
         if self.state.is_goal():
             return clear_reg*20
         if self.step == self.step_limit:
             b = self.state.boundary_pursuers()
-            return -1000+clear_reg*10+b*100
+            return -1000+clear_reg*5+b*100
         return clear_reg - self.step*0.3
 
         # version 2: dynamic reward 
@@ -429,9 +478,19 @@ class Environment:
         self.step += 1
         return self.state, self.reward()
 
-    def replay(self, t=20):
-        for s in self.state_list:
-            self.display.draw(s, t)
+    def replay(self, t=20, save_dir=None):
+        if save_dir:
+            images = []
+        for i, s in enumerate(self.state_list):
+            if save_dir:
+                img = self.display.draw(s, t, os.path.join(save_dir, "image_{:0>3}.png".format(i)))
+                new_img = np.asarray(img)
+                new_img[:,:,:] = img[:,:,::-1]
+                images.append(img)
+            else:
+                self.display.draw(s, t)
+        if save_dir:
+            imageio.mimsave(os.path.join(save_dir, "demo.gif"), images, duration=0.1)
 
 def run_episode(env, e, show, agent, discount):
     discount = 0.95
@@ -472,7 +531,7 @@ def run_episode(env, e, show, agent, discount):
         totalDiscount *= discount
         #print(state, reward, next_state, action)
 
-def test_episode(env, show, agent, discount, t=20):
+def test_episode(env, show, agent, discount, t=20, save_dir=None):
     returns = 0
     totalDiscount = 1.0
     env.reset()
@@ -485,7 +544,7 @@ def test_episode(env, show, agent, discount, t=20):
         g1, g2 = env.is_goal()
         if g1:
             if show:
-                env.replay(t)
+                env.replay(t, save_dir)
             if g2:
                 return returns, True
                 print("clean!!!!!!!!!")
@@ -496,15 +555,15 @@ def test_episode(env, show, agent, discount, t=20):
         returns += reward * totalDiscount
         totalDiscount *= discount
 
-def training():
+def training(arg):
     discount = 0.8
     """
     ladder_k2_w2 => step_limit 120, epsilon 0.3
     """
-    num_p = 3
-    map_type = "ladder"
-    k = 4
-    w = 1
+    num_p = arg.n
+    map_type = arg.map
+    k = arg.k
+    w = arg.w
     epsilon = 0.3
     learning_rate = 0.01
     agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
@@ -519,6 +578,7 @@ def training():
     goal_array = Array(500, np.float32)
     for e in range(1, 500001):
         returns, goal = run_episode(env, e, e%2000==0, agent, discount)
+        #returns, goal = run_episode(env, e, False, agent, discount)
         array.append(returns)
         goal_array.append(float(goal))
         
@@ -541,27 +601,70 @@ def training():
         # run testing
         if e % 2000 == 0:
             returns, goal = test_episode(env, True, agent, discount)
+            #returns, goal = test_episode(env, False, agent, discount)
             print()
             print("testing epoch:{}, returns:{:.6f}".format(e, returns))
 
-def testing():
+def testing(arg):
     # setting
-    num_p = 3
-    map_type = "ladder" #"ladder"/"tree"
-    k = 4
-    w = 1
+    num_p = arg.n
+    map_type = arg.map
+    k = arg.k
+    w = arg.w
     discount = 0.8
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
-    testing_e = 20000
+    if arg.testing_episode is None:
+        filenames = os.listdir(model_dir)
+        filename = sorted(filenames)[-1]
+        testing_e = int(filename[7:-3])
+        print("Didn't specify the testing episode, running on model_e{}.rl".format(testing_e))
+    else:
+        testing_e = arg.testing_episode
 
     # load model
     agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
     env = Environment(num_p, map_type, k, w, keep_pursuer=True)
 
     for i in range(0, 10):
-        returns = test_episode(env, True, agent, discount, t=40)
+        if i == 0:
+            if arg.demo:
+                demo_dir = os.path.join("demo", "{}_k{}_w{}_e{}".format(map_type, k, w, testing_e))
+                if not os.path.isdir(demo_dir):
+                    os.mkdir(demo_dir)
+                returns = test_episode(env, True, agent, discount, t=40, save_dir=demo_dir)
+            else:
+                returns = test_episode(env, True, agent, discount, t=40)
+        else:
+            returns = test_episode(env, True, agent, discount, t=40)
         print("iteration: {}, returns: {}".format(i, returns))
 
+def parse_arg():
+    parser = ArgumentParser()
+    parser.add_argument("-m", "--map", dest="map", type=str, help="map type [ladder, tree]", default="ladder")
+    parser.add_argument("-k", "--k", dest="k", type=int, help="branching factor [Integer]", default=2)
+    parser.add_argument("-w", "--w", dest="w", type=int, help="path width [Integer]", default=1)
+    parser.add_argument("-n", "--n", dest="n", type=int, help="number of pursuers [Integer]", default=2)
+    parser.add_argument("-p", "--phase", dest="phase", type=str, help="phase [training, testing]", default="training")
+    parser.add_argument("-e", "--testing_episode", dest="testing_episode", type=int, help="testing episode [Integer]", default=None)
+    parser.add_argument("-d", "--save_demo", dest="demo", action="store_true", help="output demo file or not", default=False)
+
+    args = parser.parse_args()
+    print(args)
+    return args
+
 if __name__ == "__main__":
-    #training()
-    testing()
+    if not os.path.isdir("model"):
+        os.mkdir("model")
+    if not os.path.isdir("log"):
+        os.mkdir("log")
+    if not os.path.isdir("demo"):
+        os.mkdir("demo")
+
+    arg = parse_arg()
+
+    if arg.phase == "training":
+        training(arg)
+    elif arg.phase == "testing":
+        testing(arg)
+    else:
+        print("Please enter a valid phase (training/testing)")

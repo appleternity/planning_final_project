@@ -1,7 +1,81 @@
 ASU Planning Final Project
 --------------------------
 
+# Requirement
 
+* Python 3.5+
+* Library: numpy, pickle, opencv-python, imageio
+
+#Extension
+0) How to run reinforcement_learning.py
+---------------------------------------
+1. Go to the submission folder:
+
+```
+>> cd submission
+```
+
+The program has 2 phases. 
+You can either train or test a model.
+
+### For training:
+
+Use following command to execute training phase.
+
+```
+>> python3 reinforcement_learning.py [-p training] [-m maptype] [-k branch_number] [-w width] [-n pursuer]
+```
+
+With following options.
+
+```
+-m: choosing map from [ladder, tree] for training. (Default:ladder)
+-k: choosing branch number(Default:3)
+	Tree:   1-4
+	ladder: 2-4	
+-w: choosing width with option of 1 or 2
+-n: number of pursuer. 
+	Please reference to pursuer.txt for minimum number of pursuers.
+-p: training
+	
+```
+Example:
+>python3 reinforcement_learning.py -m ladder -k 3 -w 1 -n 3 -p training
+
+
+
+### For testing:
+
+After training, you will have a directary [ladder\_k3\_w1] in model.
+
+you can test the model with the following command.
+
+
+```
+python3 reinforcement_learning.py [-p testing] [-m maptype] [-k branch_number] [-w width] [-n pursuer] [-d] [-e episode]
+```
+
+```
+-p: testing
+-m: choosing map from [ladder, tree] for training. (Default:ladder)
+-k: choosing branch number(Default:3)
+	Tree:   1-4
+	ladder: 2-4	
+-w: choosing width with option of 1 or 2
+-n: number of pursuer. 
+	Please reference to pursuer.txt for minimum num of pursuers.
+-d: save demo result		
+-e: multiple of 5000
+```
+
+Example:
+>python3 reinforcement_learning.py -m ladder -k 3 -w 1 -n 3 -p testing -e 5000 -d
+
+
+With -d enable, result of testing will be saved in ./demo
+
+
+# Benchmark
 1) How to run "brute_force.py"
 ------------------------------
 Go to the submission folder:

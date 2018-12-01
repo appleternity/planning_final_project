@@ -63,7 +63,7 @@ class Display:
             cv2.line(img, (x, 0), (x, self.height), d_color, w*self.unit)
         return img
 
-    def draw(self, state, t=30):
+    def draw(self, state, t=30, save_path=None):
         img = np.copy(self.img)
         #pursuers = state.pursuers
        
@@ -91,8 +91,11 @@ class Display:
                 cv2.circle(img, (y, x), self.unit, p_color, -1)
         
         img[self.mask==0] = (0, 0, 0)
+        if save_path:
+            cv2.imwrite(save_path, img)
         cv2.imshow("test", img)
         cv2.waitKey(t)
+        return img
 
 def display_test():
     import json
