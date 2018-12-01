@@ -9,18 +9,13 @@ ASU Planning Final Project
 #Extension
 0) How to run reinforcement_learning.py
 ---------------------------------------
-1. Go to the submission folder:
-
-```
->> cd submission
-```
 
 The program has 2 phases. 
 You can either train or test a model.
 
 ### For training:
 
-Use following command to execute training phase.
+Run the following command
 
 ```
 >> python3 reinforcement_learning.py [-p training] [-m maptype] [-k branch_number] [-w width] [-n pursuer]
@@ -64,12 +59,12 @@ python3 reinforcement_learning.py [-p testing] [-m maptype] [-k branch_number] [
 -w: choosing width with option of 1 or 2
 -n: number of pursuer. 
 	Please reference to pursuer.txt for minimum num of pursuers.
--d: save demo result		
+-d: save testing result as a gif file
 -e: multiple of 5000
 ```
 
 Example:
->python3 reinforcement_learning.py -m ladder -k 3 -w 1 -n 3 -p testing -e 5000 -d
+>python3 reinforcement_learning.py -m ladder -k 3 -w 1 -n 3 -p testing -e 10000 -d
 
 
 With -d enable, result of testing will be saved in ./demo
@@ -78,10 +73,9 @@ With -d enable, result of testing will be saved in ./demo
 # Benchmark
 1) How to run "brute_force.py"
 ------------------------------
-Go to the submission folder:
+Run the following command
 
 ```
->> cd submission
 >> python3 brute_force.py state/_tree_k1_w1_state.json
 ```
 If no json filename given in last command, the default graph would be looks like this
@@ -125,10 +119,9 @@ Time elapsed: 0.00677 s
 
 2) How to run our "benchmark.py"
 --------------------------------
-Go to the submission folder:
+Run the following command
 
 ```
->> cd submission
 >> python3 benchmark.py state/_tree_k1_w1_state.json
 ```
 

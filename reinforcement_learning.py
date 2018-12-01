@@ -649,7 +649,6 @@ def parse_arg():
     parser.add_argument("-d", "--save_demo", dest="demo", action="store_true", help="output demo file or not", default=False)
 
     args = parser.parse_args()
-    print(args)
     return args
 
 if __name__ == "__main__":
