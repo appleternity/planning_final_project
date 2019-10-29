@@ -282,13 +282,14 @@ class ActionOne:
         return "ActionOne({}, {})".format(str(self.node_id, self.next_node_id))
 
 class Agent:
-    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, q_value=None):
+    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, q_value=None, arg=None):
         self.alpha = float(alpha)
         self.epsilon = float(epsilon)
         self.discount = float(gamma)
         self.q_value = Counter() if q_value is None else q_value
         self.is_testing = False
         self.counter = Counter()
+        self.arg = arg
 
     def set_epsilon(self, epsilon):
         self.epsilon = epsilon
@@ -326,25 +327,27 @@ class Agent:
         return action
 
     def random_action(self, state, legal_actions):
-        
-        # semi-uniform distributed
-        p = np.array([self.get_qvalue(state, a) for a in legal_actions])
-        p = np.exp(p) + 1
-        p = p / np.sum(p)
-        #p = p / np.sum(p)
-        return choice_with_distribution(legal_actions, p)
-        
-        # counter_based
-        f_a = np.array([self.get_qvalue(state, a) for a in legal_actions])
-        e_c = np.array([1/(self.counter[(hash(state), hash(a))]+1) for a in legal_actions])
-        p = f_a * 0.5 + e_c*10
-        p = p / np.sum(p)
-        select_a = choice_with_distribution(legal_actions, p)
-        self.counter[(hash(state), hash(select_a))] += 1
-        return select_a
+        if self.arg.exploration == "boltzmann":
+            # semi-uniform distributed
+            p = np.array([self.get_qvalue(state, a) for a in legal_actions])
+            p = np.exp(p) + 1
+            p = p / np.sum(p)
+            #p = p / np.sum(p)
+            return choice_with_distribution(legal_actions, p)
+    
+        if self.arg.exploration == "counter":
+            # counter_based
+            f_a = np.array([self.get_qvalue(state, a) for a in legal_actions])
+            e_c = np.array([1/(self.counter[(hash(state), hash(a))]+1) for a in legal_actions])
+            p = f_a * 0.5 + e_c*10
+            p = p / np.sum(p)
+            select_a = choice_with_distribution(legal_actions, p)
+            self.counter[(hash(state), hash(select_a))] += 1
+            return select_a
 
-        # pure random
-        return random.choice(legal_actions)
+        if self.arg.exploration == "random":
+            # pure random
+            return random.choice(legal_actions)
 
     def update(self, state, action , next_state, reward):
         #self.q_value[(state, action)] += self.alpha * (
@@ -371,18 +374,19 @@ class Agent:
             }, outfile)
     
     @staticmethod
-    def load_model(path):
+    def load_model(path, arg):
         with open(path, 'rb') as infile:
             data = pickle.load(infile)
             return Agent(
                 alpha=data["alpha"],
                 epsilon=data["epsilon"],
                 gamma=data["discount"],
-                q_value=data["q_value"]
+                q_value=data["q_value"],
+                arg=arg
             )
 
 class Environment:
-    def __init__(self, num_p, map_type, k, w, keep_pursuer=False):
+    def __init__(self, num_p, map_type, k, w, keep_pursuer=False, arg=None):
         # num_p, graph
         # A = State(n, graph)
         self.num_p = num_p
@@ -403,6 +407,7 @@ class Environment:
         self.state = StateOne(keep=keep_pursuer)
         self.state_list = []
         self.keep_pursuer = keep_pursuer
+        self.arg = arg
 
         # reward setting
         self.step_limit = 100
@@ -437,31 +442,33 @@ class Environment:
             return -1000+clear_reg*10+b*100-bd*5
         return clear_reg - self.step*0.3
         """
-        
-        # version 1: dynamic reward + boundary (best)
-        clear_reg = self.state.clear_region()
-        if self.state.is_goal():
-            return clear_reg*20
-        if self.step == self.step_limit:
-            b = self.state.boundary_pursuers()
-            return -1000+clear_reg*5+b*100
-        return clear_reg - self.step*0.3
+        if self.arg.reward_function == "boundary":
+            # version 1: dynamic reward + boundary (best)
+            clear_reg = self.state.clear_region()
+            if self.state.is_goal():
+                return clear_reg*20
+            if self.step == self.step_limit:
+                b = self.state.boundary_pursuers()
+                return -1000+clear_reg*5+b*100
+            return clear_reg - self.step*0.3
 
-        # version 2: dynamic reward 
-        clear_reg = self.state.clear_region()
-        if self.state.is_goal():
-            return clear_reg*20
-        if self.step == self.step_limit:
-            return -1000+clear_reg*10
-        return clear_reg - self.step*0.3
-        
-        # version 3: fix reward
-        clear_reg = self.state.clear_region()
-        if self.state.is_goal():
-            return 150
-        if self.step == self.step_limit:
-            return -150
-        return clear_reg - self.step*0.3
+        if self.arg.reward_function == "dynamic":
+            # version 2: dynamic reward 
+            clear_reg = self.state.clear_region()
+            if self.state.is_goal():
+                return clear_reg*20
+            if self.step == self.step_limit:
+                return -1000+clear_reg*10
+            return clear_reg - self.step*0.3
+            
+        if self.arg.reward_function == "fix":
+            # version 3: fix reward
+            clear_reg = self.state.clear_region()
+            if self.state.is_goal():
+                return 150
+            if self.step == self.step_limit:
+                return -150
+            return clear_reg - self.step*0.3
 
     def get_possible_actions(self):
         return self.state.get_legal_action()
@@ -566,8 +573,8 @@ def training(arg):
     w = arg.w
     epsilon = 0.3
     learning_rate = 0.01
-    agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate)
-    env = Environment(num_p, map_type, k, w)
+    agent = Agent(gamma=discount, epsilon=epsilon, alpha=learning_rate, arg=arg)
+    env = Environment(num_p, map_type, k, w, arg=arg)
     array = Array(500, np.float32)
     model_dir = os.path.join("model", "{}_k{}_w{}".format(map_type, k, w))
     if not os.path.isdir(model_dir):
@@ -583,9 +590,9 @@ def training(arg):
         goal_array.append(float(goal))
         
         # epsilon decay
-        if e % 10000 == 0:
+        if e % 10000 == 0 and arg.exploration == "random":
             epsilon *= 0.8
-            epsilon = max(0.3, epsilon)
+            epsilon = max(0.05, epsilon)
             agent.set_epsilon(epsilon)
 
         # save model
@@ -622,8 +629,8 @@ def testing(arg):
         testing_e = arg.testing_episode
 
     # load model
-    agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)))
-    env = Environment(num_p, map_type, k, w, keep_pursuer=True)
+    agent = Agent.load_model(os.path.join(model_dir, "model_e{}.rl".format(testing_e)), arg=arg)
+    env = Environment(num_p, map_type, k, w, keep_pursuer=True, arg=arg)
 
     for i in range(0, 10):
         if i == 0:
@@ -647,7 +654,10 @@ def parse_arg():
     parser.add_argument("-p", "--phase", dest="phase", type=str, help="phase [training, testing]", default="training")
     parser.add_argument("-e", "--testing_episode", dest="testing_episode", type=int, help="testing episode [Integer]", default=None)
     parser.add_argument("-d", "--save_demo", dest="demo", action="store_true", help="output demo file or not", default=False)
-
+    
+    parser.add_argument("-r", "--reward", dest="reward_function", type=str, help="reward function [fix, dynamic, boundary]", default="boundary")
+    parser.add_argument("-x", "--explore", dest="exploration", type=str, help="exploration strategy [random, boltzmann, counter]", default="boltzmann")
+    
     args = parser.parse_args()
     return args
 
